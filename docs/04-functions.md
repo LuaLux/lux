@@ -34,6 +34,13 @@ end
 table.sort(items, function(a, b) return a < b end)
 ```
 
+Inside a table constructor a function field may carry its name directly — see
+[Named Functions in tables](16-tables.md#named-functions):
+
+```lux
+local ops = { function add(a: number, b: number): number return a + b end }
+```
+
 ## Default Parameters
 
 ```lux

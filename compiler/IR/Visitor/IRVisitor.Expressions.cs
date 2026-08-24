@@ -441,10 +441,27 @@ internal partial class IRVisitor
                 TableFieldKind.Bracket, (Expr)Visit(bf.expr(0)), null, (Expr)Visit(bf.expr(1)), SpanFromCtx(bf)),
             LuxParser.NameFieldContext nf => new TableField(
                 TableFieldKind.Named, null, NameRefFromTerm(nf.NAME()), (Expr)Visit(nf.expr()), SpanFromCtx(nf)),
+            LuxParser.FunctionFieldContext ff => new TableField(
+                TableFieldKind.Named, null, NameRefFromTerm(ff.NAME()), BuildFieldFunction(ff), SpanFromCtx(ff)),
             LuxParser.ValueFieldContext vf => new TableField(
                 TableFieldKind.Positional, null, null, (Expr)Visit(vf.expr()), SpanFromCtx(vf)),
             _ => throw new InvalidOperationException($"Unknown field type: {ctx.GetType().Name}")
         };
+    }
+
+    /// <summary>
+    /// Desugars the named-function field shorthand <c>{ function foo(...) ... end }</c> into the
+    /// anonymous function that <c>{ foo = function(...) ... end }</c> would have produced. The name
+    /// becomes the field key, so nothing downstream has to know the shorthand existed.
+    /// </summary>
+    private FunctionDefExpr BuildFieldFunction(LuxParser.FunctionFieldContext ctx)
+    {
+        var (parameters, returnType, body, ret) = VisitFuncBodyContent(ctx.funcBody());
+        var expr = new FunctionDefExpr(NewNodeID, SpanFromCtx(ctx), parameters, returnType, body, ret, ctx.ASYNC() != null)
+        {
+            TypeParams = VisitTypeParamListContent(ctx.funcBody().typeParamList())
+        };
+        return expr;
     }
 
     #endregion

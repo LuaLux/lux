@@ -3256,6 +3256,20 @@ public partial class LuxBaseListener : ILuxListener {
 	/// <param name="context">The parse tree.</param>
 	public virtual void ExitNameField([NotNull] LuxParser.NameFieldContext context) { }
 	/// <summary>
+	/// Enter a parse tree produced by the <c>FunctionField</c>
+	/// labeled alternative in <see cref="LuxParser.field"/>.
+	/// <para>The default implementation does nothing.</para>
+	/// </summary>
+	/// <param name="context">The parse tree.</param>
+	public virtual void EnterFunctionField([NotNull] LuxParser.FunctionFieldContext context) { }
+	/// <summary>
+	/// Exit a parse tree produced by the <c>FunctionField</c>
+	/// labeled alternative in <see cref="LuxParser.field"/>.
+	/// <para>The default implementation does nothing.</para>
+	/// </summary>
+	/// <param name="context">The parse tree.</param>
+	public virtual void ExitFunctionField([NotNull] LuxParser.FunctionFieldContext context) { }
+	/// <summary>
 	/// Enter a parse tree produced by the <c>ValueField</c>
 	/// labeled alternative in <see cref="LuxParser.field"/>.
 	/// <para>The default implementation does nothing.</para>

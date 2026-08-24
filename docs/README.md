@@ -21,7 +21,7 @@ Lux is a typed superset of Lua. It adds optional type annotations, an ES-style m
 13. [Async / Await](13-async-await.md) — Coroutine-based async functions, `__done` callbacks
 14. [Nilability & Optionals](14-nilability.md) — Strict-nil mode, `??`, `!`, `?.`, narrowing
 15. [Declaration Files](15-declarations.md) — `.d.lux` files for typing external Lua code
-16. [Tables](16-tables.md) — Constructors, type annotations, configurable index base
+16. [Tables](16-tables.md) — Constructors, named-function fields, type annotations, configurable index base
 
 ### Toolchain & ecosystem
 

@@ -372,6 +372,12 @@ public enum DiagnosticCode
     [Format("A function returning 'never' cannot return a value")]
     ErrNeverFunctionReturnsValue = 0x402B,
 
+    [Level(DiagnosticLevel.Warning)]
+    [Category(DiagnosticCategory.Semantic)]
+    [Format("'{0}' is called with ':' but declares no 'self' parameter; the receiver is passed as its first argument")]
+    [Help("call it with '.' instead, or give it an explicit 'self' first parameter")]
+    WarnColonCallWithoutSelf = 0x402C,
+
     #endregion
 
     #region Annotations

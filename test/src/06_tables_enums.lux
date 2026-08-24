@@ -43,6 +43,44 @@ export function run(): nil
     local dict = { ["one-two"] = 12 }
     expectEq("bracket key", dict["one-two"], 12)
 
+    -- Named-function fields: shorthand for `name = function ... end`
+    local ops = {
+        function add(a: number, b: number): number
+            return a + b
+        end,
+        function negate(v: number): number
+            return -v
+        end,
+        scale = function(v: number, by: number): number
+            return v * by
+        end,
+    }
+    expectEq("function field add", ops.add(2, 3), 5)
+    expectEq("function field negate", ops.negate(7), -7)
+    expectEq("function field beside longhand", ops.scale(4, 5), 20)
+
+    -- The shorthand only claims a `function` followed by a Name; anonymous
+    -- functions still take an integer key.
+    local mixedFns = {
+        function named() return "named" end,
+        function() return "anon" end,
+        label = "tail",
+    }
+    expectEq("named field keeps string key", mixedFns.named(), "named")
+    expectEq("anonymous field keeps integer key", mixedFns[1](), "anon")
+    expectEq("plain field beside both", mixedFns.label, "tail")
+
+    -- An explicit `self` parameter makes a table field callable with `:`
+    local counter = {
+        total = 0,
+        function bump(self: any, by: number): number
+            self.total = self.total + by
+            return self.total
+        end,
+    }
+    expectEq("self field via colon", counter:bump(3), 3)
+    expectEq("self field accumulates", counter:bump(4), 7)
+
     section("enums")
 
     -- Auto-incremented enum

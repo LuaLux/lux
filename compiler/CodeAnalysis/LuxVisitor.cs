@@ -1642,6 +1642,13 @@ public interface ILuxVisitor<Result> : IParseTreeVisitor<Result> {
 	/// <return>The visitor result.</return>
 	Result VisitNameField([NotNull] LuxParser.NameFieldContext context);
 	/// <summary>
+	/// Visit a parse tree produced by the <c>FunctionField</c>
+	/// labeled alternative in <see cref="LuxParser.field"/>.
+	/// </summary>
+	/// <param name="context">The parse tree.</param>
+	/// <return>The visitor result.</return>
+	Result VisitFunctionField([NotNull] LuxParser.FunctionFieldContext context);
+	/// <summary>
 	/// Visit a parse tree produced by the <c>ValueField</c>
 	/// labeled alternative in <see cref="LuxParser.field"/>.
 	/// </summary>

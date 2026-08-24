@@ -2775,6 +2775,18 @@ public interface ILuxListener : IParseTreeListener {
 	/// <param name="context">The parse tree.</param>
 	void ExitNameField([NotNull] LuxParser.NameFieldContext context);
 	/// <summary>
+	/// Enter a parse tree produced by the <c>FunctionField</c>
+	/// labeled alternative in <see cref="LuxParser.field"/>.
+	/// </summary>
+	/// <param name="context">The parse tree.</param>
+	void EnterFunctionField([NotNull] LuxParser.FunctionFieldContext context);
+	/// <summary>
+	/// Exit a parse tree produced by the <c>FunctionField</c>
+	/// labeled alternative in <see cref="LuxParser.field"/>.
+	/// </summary>
+	/// <param name="context">The parse tree.</param>
+	void ExitFunctionField([NotNull] LuxParser.FunctionFieldContext context);
+	/// <summary>
 	/// Enter a parse tree produced by the <c>ValueField</c>
 	/// labeled alternative in <see cref="LuxParser.field"/>.
 	/// </summary>

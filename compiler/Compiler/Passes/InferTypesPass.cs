@@ -2335,6 +2335,14 @@ public sealed class InferTypesPass() : Pass(PassName, PassScope.PerBuild)
         return score;
     }
 
+    /// <summary>
+    /// Infers the type of a <c>receiver:method(...)</c> call. The <c>:</c> form passes the receiver
+    /// as an implicit <c>self</c>, so the receiver is prepended to the argument list when it is a
+    /// class (where <c>self</c> is synthetic) or when the signature declares a leading <c>self</c>
+    /// parameter (e.g. <c>declare interface IoFile function flush(self: any): any</c>). A plain
+    /// table whose field takes neither is the footgun this warns about: Lua still passes the
+    /// receiver, so every declared parameter is shifted by one.
+    /// </summary>
     private TypID InferMethodCall(PassContext pc, MethodCallExpr mc)
     {
         var objTyp = SynthesizeExpr(pc, mc.Object);
@@ -2397,11 +2405,12 @@ public sealed class InferTypesPass() : Pass(PassName, PassScope.PerBuild)
             return pc.Types.PrimAny.ID;
         }
 
-        // The `:` call passes the receiver as the implicit `self`. Prepend it when the receiver
-        // is a class (self is synthetic) OR the method's signature declares a leading `self`
-        // parameter (e.g. `declare interface IoFile function flush(self: any): any`), so the
-        // explicit self is satisfied by the receiver instead of counting as a missing argument.
         var prefixSelf = objType is ClassType || StartsWithSelfParam(methodFn);
+        if (!prefixSelf && objType is StructType)
+        {
+            pc.Diag.Report(mc.MethodName.Span, DiagnosticCode.WarnColonCallWithoutSelf, mc.MethodName.Name);
+        }
+
         var fullArgs = prefixSelf
             ? new List<TypID>(argTypes.Count + 1) { objTyp }
             : new List<TypID>(argTypes.Count);

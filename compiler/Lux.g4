@@ -842,6 +842,16 @@ functionDef
 // -----------------------------------------------------------------------------
 //  Table Constructors
 // -----------------------------------------------------------------------------
+//
+// A named-function field is shorthand for the `Name = function ... end` form:
+//
+//   { function foo(x: number): number return x end }
+//   { foo = function(x: number): number return x end }   -- identical
+//
+// The key is the plain identifier, so it produces a string key exactly like
+// `Name = exp`. `function` followed by `(` is still the anonymous-function
+// expression; the following NAME is what selects this alternative. There is no
+// `function t:method()` form inside a table — write the `self` parameter out.
 
 tableConstructor
     : LBRACE fieldList? RBRACE
@@ -854,6 +864,7 @@ fieldList
 field
     : LBRACK expr RBRACK ASSIGN expr                            # BracketField
     | NAME ASSIGN expr                                          # NameField
+    | ASYNC? FUNCTION NAME funcBody                             # FunctionField
     | expr                                                      # ValueField
     ;
 
