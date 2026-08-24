@@ -64,7 +64,7 @@ public sealed class CompletionHandler(LuxWorkspace workspace) : CompletionHandle
             }
             else
             {
-                foreach (var prim in new[] { "string", "number", "boolean", "any", "void", "nil" })
+                foreach (var prim in new[] { "string", "number", "boolean", "any", "void", "nil", "never", "thread", "userdata" })
                 {
                     items.Add(new CompletionItem
                     {

@@ -808,6 +808,9 @@ public class ResolveTypeRefsPass() : Pass(PassName, PassScope.PerBuild)
             case TypeKind.PrimitiveUserdata:
                 result = tt.PrimUserdata;
                 break;
+            case TypeKind.PrimitiveNever:
+                result = tt.PrimNever;
+                break;
             case TypeKind.TableArray:
             {
                 var et = ResolveTypeRef(tt, ((ArrayTypeRef) tr).ElementType);

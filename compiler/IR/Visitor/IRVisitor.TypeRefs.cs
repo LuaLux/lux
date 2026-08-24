@@ -11,7 +11,8 @@ internal partial class IRVisitor
         { "boolean", TypeKind.PrimitiveBool },
         { "any", TypeKind.PrimitiveAny },
         { "thread", TypeKind.PrimitiveThread },
-        { "userdata", TypeKind.PrimitiveUserdata }
+        { "userdata", TypeKind.PrimitiveUserdata },
+        { "never", TypeKind.PrimitiveNever }
     };
 
     public override Node VisitBareFunctionType(LuxParser.BareFunctionTypeContext context)

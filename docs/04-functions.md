@@ -111,4 +111,13 @@ end
 function doWork(): void
     print("working")
 end
+
+-- Never returns: always raises, exits, or loops forever
+function panic(message: string): never
+    error("panic: " .. message)
+end
 ```
+
+A `never` function may not return a value, and the compiler rejects it if any path can reach its
+end. Code after a call to one is reported as unreachable. See
+[The `never` Type](02-types.md#the-never-type).

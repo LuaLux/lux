@@ -46,16 +46,44 @@ public sealed class InferTypesPass() : Pass(PassName, PassScope.PerBuild)
 
     private readonly Dictionary<AccessPath, TypID> _narrowed = new();
 
+    /// <summary>
+    /// Runs in three phases so that every check sees a fully-populated type universe regardless of
+    /// the order packages and files happen to be walked in.
+    /// <para>
+    /// Phase 0 types the signatures that follow from annotations alone — <c>declare</c>d globals
+    /// and any function with an explicit return type — and pushes them onto the import bindings
+    /// that reference them. A body checked later needs those signatures: a <c>never</c> return
+    /// decides whether a call diverges, which drives the unreachable-code and never-completion
+    /// checks.
+    /// </para>
+    /// <para>
+    /// Phase 1 resolves class, interface and extend declarations across the whole build so that
+    /// expression-level checks in phase 2 see complete member tables. Without it an installed
+    /// types-only package whose <c>.d.lux</c> is processed after a consumer's source file would
+    /// leave <c>Entity.Methods</c> empty when <c>Entity.Subscribe(...)</c> is checked, and the call
+    /// would fall through to <c>any</c>.
+    /// </para>
+    /// <para>
+    /// Phase 2 is the full per-file walk, ordered so importers run after their import targets.
+    /// Earlier passes propagate source-side symbol types onto import bindings, but value-level
+    /// declarations only get their types here, so re-propagating after each package pushes the
+    /// freshly inferred types onto every importer.
+    /// </para>
+    /// </summary>
     public override bool Run(PassContext context)
     {
-        // Phase 1: walk every file in every package and resolve only class +
-        // interface decls. This populates Methods/StaticMethods/Getters/
-        // Setters/InstanceFields/ConstructorType across the whole build so
-        // that expression-level type checks in Phase 2 see fully-built
-        // structures regardless of file order. Without this, e.g. an
-        // installed types-only package whose .d.lux is processed AFTER a
-        // consumer's source file would leave Entity.Methods empty when
-        // `Entity.Subscribe(...)` is checked → falls through to `any`.
+        foreach (var pkg in context.Pkgs)
+        {
+            foreach (var file in pkg.Files)
+            {
+                ResolveSignatures(MakeFileContext(context, pkg, file), file.Hir.Body);
+            }
+        }
+
+        foreach (var pkg in context.Pkgs)
+            foreach (var file in pkg.Files)
+                ResolveImportsPass.PropagateImportTypes(context, pkg, file);
+
         foreach (var pkg in context.Pkgs)
         {
             foreach (var file in pkg.Files)
@@ -66,16 +94,6 @@ public sealed class InferTypesPass() : Pass(PassName, PassScope.PerBuild)
             }
         }
 
-        // Phase 2: full per-file walk, ordered so importers run AFTER their
-        // import targets. ResolveImports/ResolveTypeRefs propagate source-side
-        // symbol types onto import bindings, but functions (and other
-        // value-level decls) only have their types computed here in Phase 2.
-        // Without topo order, a consumer file might be checked while the
-        // target file's exported function symbol is still untyped — then a
-        // call like `local a, b, c = util.foo()` sees a callee of type `any`
-        // and `a` gets `any` instead of `string`. Re-propagating import types
-        // after each pkg finishes pushes the freshly inferred types onto
-        // every importer.
         var ordered = TopoSortPackages(context);
         foreach (var pkg in ordered)
         {
@@ -87,8 +105,7 @@ public sealed class InferTypesPass() : Pass(PassName, PassScope.PerBuild)
                 // precede the `extend` block that declares it (as with imported extensions).
                 foreach (var stmt in file.Hir.Body)
                     if (stmt is ExtendDecl ed) RegisterExtensionSignatures(fileCtx, ed);
-                ResolveStmts(fileCtx, file.Hir.Body);
-                if (file.Hir.Return != null) ResolveStmt(fileCtx, file.Hir.Return);
+                ResolveStmts(fileCtx, file.Hir.Body, file.Hir.Return);
             }
 
             foreach (var importerPkg in context.Pkgs)
@@ -157,6 +174,80 @@ public sealed class InferTypesPass() : Pass(PassName, PassScope.PerBuild)
                parent.ScopeAlloc, parent.NodeAlloc, parent.Names, parent.Cache, parent.Config);
 
     /// <summary>
+    /// Types the declarations whose signature follows from their annotations alone, without
+    /// walking any body: <c>declare</c>d variables and functions (including module members) and
+    /// functions carrying an explicit return type. Phase 2 recomputes the same signatures from the
+    /// same annotations, so running this early only fills them in sooner.
+    /// </summary>
+    private void ResolveSignatures(PassContext pc, List<Stmt> stmts)
+    {
+        foreach (var stmt in stmts)
+        {
+            ResolveSignature(pc, stmt is ExportStmt es ? es.Declaration : stmt);
+        }
+    }
+
+    private void ResolveSignature(PassContext pc, Stmt stmt)
+    {
+        switch (stmt)
+        {
+            case DeclareVariableDecl dvd:
+                ResolveDecl(pc, dvd);
+                break;
+            case DeclareFunctionDecl dfd:
+                ResolveDecl(pc, dfd);
+                break;
+            case DeclareModuleDecl dmd:
+                foreach (var member in dmd.Members) ResolveSignature(pc, member);
+                break;
+            case FunctionDecl fd:
+                ResolveAnnotatedSignature(pc, fd.Parameters, fd.ReturnType,
+                    fd.NamePath.Count == 1 && fd.MethodName == null ? fd.NamePath[0] : null, fd.IsAsync);
+                break;
+            case LocalFunctionDecl lfd:
+                ResolveAnnotatedSignature(pc, lfd.Parameters, lfd.ReturnType, lfd.Name, lfd.IsAsync);
+                break;
+        }
+    }
+
+    /// <summary>
+    /// Builds a function's type from its parameter and return annotations and stamps it on the
+    /// function symbol. Mirrors the signature half of <see cref="ResolveFunctionLike"/>; functions
+    /// without a declared return type are skipped because theirs is inferred from the body.
+    /// </summary>
+    private void ResolveAnnotatedSignature(PassContext pc, List<Parameter> parameters, TypeRef? returnTypeRef,
+        NameRef? funcName, bool isAsync)
+    {
+        if (returnTypeRef == null || returnTypeRef.ResolvedType == TypID.Invalid) return;
+        if (funcName is not { Sym: var funcSym } || funcSym == SymID.Invalid) return;
+
+        var paramTypes = new List<Tuple<string, Type>>();
+        var isVararg = false;
+        Type? varargType = null;
+        var defaultIndices = new List<int>();
+
+        for (var i = 0; i < parameters.Count; i++)
+        {
+            var param = parameters[i];
+            var t = ResolveParamType(pc, param);
+            if (param.IsVararg)
+            {
+                isVararg = true;
+                varargType = t.Kind == TypeKind.PrimitiveAny ? null : t;
+                continue;
+            }
+
+            paramTypes.Add(new Tuple<string, Type>(param.Name.Name, t));
+            if (param.DefaultValue != null) defaultIndices.Add(i);
+        }
+
+        var funcTyp = pc.Types.FuncOf(paramTypes, GetType(pc, returnTypeRef.ResolvedType), isVararg, varargType,
+            defaultIndices.Count > 0 ? defaultIndices : null, isAsync,
+            predicate: BuildPredicate(pc, returnTypeRef, parameters));
+        pc.Pkg!.Syms.SetType(funcSym, funcTyp);
+    }
+
+    /// <summary>
     /// Pre-phase: visit every declaration that contributes type info to the
     /// symbol table (class/interface members, declare-variable types,
     /// declare-function signatures, declare-module members). Without this,
@@ -212,26 +303,70 @@ public sealed class InferTypesPass() : Pass(PassName, PassScope.PerBuild)
         }
     }
 
-    private void ResolveStmts(PassContext pc, List<Stmt> stmts)
+    /// <summary>
+    /// Resolves a block statement by statement, followed by its optional trailing statement (the
+    /// tail <c>return</c>, which the HIR keeps outside the body list). Two flow-sensitive effects
+    /// are applied while walking it: statements that follow one which can never fall through are
+    /// reported as unreachable, and an <c>if</c> whose only branch always exits (<c>return</c>,
+    /// <c>break</c>, or a call returning <c>never</c>) narrows its condition's else-side over the
+    /// rest of the block — the guard-clause shape.
+    /// </summary>
+    private void ResolveStmts(PassContext pc, List<Stmt> stmts, Stmt? tail = null)
     {
+        var flowNarrows = new List<(AccessPath path, TypID prev, bool hadPrev)>();
+        var reportedUnreachable = false;
+
         for (var i = 0; i < stmts.Count; i++)
         {
-            if (IsTerminator(stmts[i]) && i < stmts.Count - 1)
+            var stmt = stmts[i];
+            var carried = ResolveStmt(pc, stmt);
+            if (carried is { Count: > 0 })
             {
-                pc.Diag.Report(stmts[i + 1].Span, DiagnosticCode.WrnUnreachableCode);
-                break;
+                flowNarrows.AddRange(PushAllNarrows(carried));
             }
+
+            var next = i + 1 < stmts.Count ? stmts[i + 1] : tail;
+            if (reportedUnreachable || next == null) continue;
+            reportedUnreachable = ReportIfUnreachable(pc, stmt, next);
         }
 
-        foreach (var stmt in stmts)
-        {
-            ResolveStmt(pc, stmt);
-        }
+        if (tail != null) ResolveStmt(pc, tail);
+
+        PopAllNarrows(flowNarrows);
     }
 
-    private void ResolveStmt(PassContext pc, Stmt stmt)
+    /// <summary>
+    /// Reports <paramref name="next"/> as dead code when <paramref name="stmt"/> can never fall
+    /// through to it, and returns whether it did. A terminator (<c>return</c>, <c>break</c>, ...)
+    /// is a warning for parity with plain Lua; a call whose declared return type is <c>never</c>
+    /// is an error, since the signature states outright that control does not come back.
+    /// </summary>
+    private bool ReportIfUnreachable(PassContext pc, Stmt stmt, Stmt next)
     {
-        if (stmt == null) return;
+        if (IsTerminator(stmt))
+        {
+            pc.Diag.Report(next.Span, DiagnosticCode.WrnUnreachableCode);
+            return true;
+        }
+
+        if (stmt is ExprStmt es && IsDivergingCall(pc, es.Expression))
+        {
+            pc.Diag.Report(next.Span, DiagnosticCode.ErrUnreachableAfterNever,
+                DescribeCallee(es.Expression));
+            return true;
+        }
+
+        return false;
+    }
+
+    /// <summary>
+    /// Resolves a single statement. Returns the narrowings that stay in effect for the statements
+    /// that follow it in the same block (a guard-clause <c>if</c> whose body always exits), or
+    /// <c>null</c> when the statement carries nothing forward.
+    /// </summary>
+    private List<(AccessPath path, TypID typ)>? ResolveStmt(PassContext pc, Stmt stmt)
+    {
+        if (stmt == null) return null;
         switch (stmt)
         {
             case Decl decl:
@@ -286,6 +421,13 @@ public sealed class InferTypesPass() : Pass(PassName, PassScope.PerBuild)
                 }
 
                 CheckExhaustiveMatch(pc, ifStmt);
+
+                if (ifStmt.ElseBody == null && ifStmt.ElseIfs.Count == 0
+                    && elseNarrows.Count > 0 && BlockAlwaysExits(pc, ifStmt.Body))
+                {
+                    return elseNarrows;
+                }
+
                 break;
             }
             case NumericForStmt nf:
@@ -360,6 +502,8 @@ public sealed class InferTypesPass() : Pass(PassName, PassScope.PerBuild)
             default:
                 throw new InvalidOperationException($"Unknown statement kind: {stmt.GetType().Name}");
         }
+
+        return null;
     }
 
     private void ResolveDecl(PassContext pc, Decl decl)
@@ -509,8 +653,7 @@ public sealed class InferTypesPass() : Pass(PassName, PassScope.PerBuild)
                 (ann, badName) => ReportBadSide(pc, ann, badName));
             classType.ConstructorSide = ctorSide;
 
-            ResolveStmts(pc, cd.Constructor.Body);
-            if (cd.Constructor.ReturnStmt != null) ResolveStmt(pc, cd.Constructor.ReturnStmt);
+            ResolveStmts(pc, cd.Constructor.Body, cd.Constructor.ReturnStmt);
         }
 
         foreach (var method in cd.Methods)
@@ -589,23 +732,15 @@ public sealed class InferTypesPass() : Pass(PassName, PassScope.PerBuild)
 
             if (!method.IsAbstract)
             {
-                ResolveStmts(pc, method.Body);
-                if (method.ReturnStmt != null) ResolveStmt(pc, method.ReturnStmt);
+                ResolveStmts(pc, method.Body, method.ReturnStmt);
 
                 // Return-value type check (parity with free functions, which do this in
                 // ResolveFunctionLike) plus the missing-return / all-paths analysis.
                 var collected = CollectReturnTypes(pc, method.Body);
                 if (method.ReturnStmt != null)
                     collected.Add((ComputeReturnType(pc, method.ReturnStmt.Values), method.ReturnStmt.Span));
-                foreach (var (typ, span) in collected)
-                    EnsureAssignable(pc, span, retType.ID, typ);
-
-                if (ReturnTypeRequiresValue(pc, retType.ID)
-                    && !FunctionBodyAlwaysReturns(method.Body, method.ReturnStmt))
-                {
-                    var span = method.ReturnType?.Span ?? method.Name.Span;
-                    pc.Diag.Report(span, DiagnosticCode.ErrMissingReturn, TypeName(pc, retType.ID));
-                }
+                CheckReturnFlow(pc, retType.ID, collected, method.Body, method.ReturnStmt,
+                    method.ReturnType?.Span ?? method.Name.Span);
             }
             if (method.IsAsync) _asyncDepth--;
         }
@@ -643,8 +778,7 @@ public sealed class InferTypesPass() : Pass(PassName, PassScope.PerBuild)
                 pc.Diag.Report(accessor.Span, Diagnostics.DiagnosticCode.ErrOverrideNoParent, accessor.Name.Name);
             }
 
-            ResolveStmts(pc, accessor.Body);
-            if (accessor.ReturnStmt != null) ResolveStmt(pc, accessor.ReturnStmt);
+            ResolveStmts(pc, accessor.Body, accessor.ReturnStmt);
         }
 
         CheckInterfaceImplementation(pc, cd, classType);
@@ -840,19 +974,13 @@ public sealed class InferTypesPass() : Pass(PassName, PassScope.PerBuild)
                 ifaceType.DefaultMethodNodes[method.Name.Name] = method;
 
                 if (method.IsAsync) _asyncDepth++;
-                ResolveStmts(pc, method.Body!);
-                if (method.ReturnStmt != null) ResolveStmt(pc, method.ReturnStmt);
+                ResolveStmts(pc, method.Body!, method.ReturnStmt);
 
                 var collected = CollectReturnTypes(pc, method.Body!);
                 if (method.ReturnStmt != null)
                     collected.Add((ComputeReturnType(pc, method.ReturnStmt.Values), method.ReturnStmt.Span));
-                foreach (var (typ, span) in collected)
-                    EnsureAssignable(pc, span, retType.ID, typ);
-                if (ReturnTypeRequiresValue(pc, retType.ID) && !FunctionBodyAlwaysReturns(method.Body!, method.ReturnStmt))
-                {
-                    var span = method.ReturnType?.Span ?? method.Name.Span;
-                    pc.Diag.Report(span, DiagnosticCode.ErrMissingReturn, TypeName(pc, retType.ID));
-                }
+                CheckReturnFlow(pc, retType.ID, collected, method.Body!, method.ReturnStmt,
+                    method.ReturnType?.Span ?? method.Name.Span);
                 if (method.IsAsync) _asyncDepth--;
             }
         }
@@ -931,19 +1059,13 @@ public sealed class InferTypesPass() : Pass(PassName, PassScope.PerBuild)
                 ? GetType(pc, method.ReturnType.ResolvedType) : pc.Types.PrimNil;
 
             if (method.IsAsync) _asyncDepth++;
-            ResolveStmts(pc, method.Body);
-            if (method.ReturnStmt != null) ResolveStmt(pc, method.ReturnStmt);
+            ResolveStmts(pc, method.Body, method.ReturnStmt);
 
             var collected = CollectReturnTypes(pc, method.Body);
             if (method.ReturnStmt != null)
                 collected.Add((ComputeReturnType(pc, method.ReturnStmt.Values), method.ReturnStmt.Span));
-            foreach (var (typ, span) in collected)
-                EnsureAssignable(pc, span, retType.ID, typ);
-            if (ReturnTypeRequiresValue(pc, retType.ID) && !FunctionBodyAlwaysReturns(method.Body, method.ReturnStmt))
-            {
-                var span = method.ReturnType?.Span ?? method.Name.Span;
-                pc.Diag.Report(span, DiagnosticCode.ErrMissingReturn, TypeName(pc, retType.ID));
-            }
+            CheckReturnFlow(pc, retType.ID, collected, method.Body, method.ReturnStmt,
+                method.ReturnType?.Span ?? method.Name.Span);
             if (method.IsAsync) _asyncDepth--;
         }
     }
@@ -1074,11 +1196,7 @@ public sealed class InferTypesPass() : Pass(PassName, PassScope.PerBuild)
             }
         }
 
-        ResolveStmts(pc, body);
-        if (returnStmt != null)
-        {
-            ResolveStmt(pc, returnStmt);
-        }
+        ResolveStmts(pc, body, returnStmt);
 
         Type returnType;
         if (returnTypeRef != null && returnTypeRef.ResolvedType != TypID.Invalid)
@@ -1090,17 +1208,7 @@ public sealed class InferTypesPass() : Pass(PassName, PassScope.PerBuild)
                 collected.Add((ComputeReturnType(pc, returnStmt.Values), returnStmt.Span));
             }
 
-            foreach (var (typ, span) in collected)
-            {
-                EnsureAssignable(pc, span, returnType.ID, typ);
-            }
-
-            if (ReturnTypeRequiresValue(pc, returnType.ID)
-                && !FunctionBodyAlwaysReturns(body, returnStmt))
-            {
-                pc.Diag.Report(returnTypeRef.Span, DiagnosticCode.ErrMissingReturn,
-                    TypeName(pc, returnType.ID));
-            }
+            CheckReturnFlow(pc, returnType.ID, collected, body, returnStmt, returnTypeRef.Span);
         }
         else
         {
@@ -1185,6 +1293,11 @@ public sealed class InferTypesPass() : Pass(PassName, PassScope.PerBuild)
         }
     }
 
+    /// <summary>
+    /// Resolves an assignment. Writing through a narrowed access path ends that narrowing: the new
+    /// value only has to fit the declared type, and reads after the assignment see the declared
+    /// type again.
+    /// </summary>
     private void ResolveAssignStmt(PassContext pc, AssignStmt stmt)
     {
         var valueTypes = new List<TypID>();
@@ -1198,6 +1311,9 @@ public sealed class InferTypesPass() : Pass(PassName, PassScope.PerBuild)
         for (var i = 0; i < stmt.Targets.Count; i++)
         {
             var target = stmt.Targets[i];
+            var narrowedPath = GetAccessPath(target);
+            if (narrowedPath != null) _narrowed.Remove(narrowedPath);
+
             var targetType = SynthesizeExpr(pc, target);
             if (i < valueTypes.Count && targetType != TypID.Invalid && targetType != pc.Types.PrimAny.ID)
             {
@@ -1448,6 +1564,12 @@ public sealed class InferTypesPass() : Pass(PassName, PassScope.PerBuild)
         return result;
     }
 
+    /// <summary>
+    /// Infers the type of a binary expression. For the short-circuiting operators a <c>never</c>
+    /// operand is special: a diverging left side takes the whole expression with it, while a
+    /// diverging right side contributes no value, so the result is the surviving operand — and for
+    /// <c>or</c>, reaching the result means the left side was truthy, which rules its nil out.
+    /// </summary>
     private TypID InferBinary(PassContext pc, BinaryExpr bin)
     {
         var tt = pc.Types;
@@ -1513,11 +1635,14 @@ public sealed class InferTypesPass() : Pass(PassName, PassScope.PerBuild)
                 return tt.PrimBool.ID;
             case BinaryOp.And:
             case BinaryOp.Or:
+                if (l == tt.PrimNever.ID) return tt.PrimNever.ID;
+                if (r == tt.PrimNever.ID) return bin.Op == BinaryOp.Or ? StripNil(pc, l) : l;
                 if (l == r) return l;
                 if (l == tt.PrimAny.ID || r == tt.PrimAny.ID) return tt.PrimAny.ID;
                 return pc.Types.UnionOf([GetType(pc, l), GetType(pc, r)]);
             case BinaryOp.NilCoalesce:
             {
+                if (l == tt.PrimNever.ID) return tt.PrimNever.ID;
                 var stripped = StripNil(pc, l);
                 if (stripped == r) return stripped;
                 if (l == tt.PrimAny.ID || r == tt.PrimAny.ID) return tt.PrimAny.ID;
@@ -1773,11 +1898,7 @@ public sealed class InferTypesPass() : Pass(PassName, PassScope.PerBuild)
             }
         }
 
-        ResolveStmts(pc, fde.Body);
-        if (fde.ReturnStmt != null)
-        {
-            ResolveStmt(pc, fde.ReturnStmt);
-        }
+        ResolveStmts(pc, fde.Body, fde.ReturnStmt);
 
         Type returnType;
         if (fde.ReturnType != null && fde.ReturnType.ResolvedType != TypID.Invalid)
@@ -2648,6 +2769,41 @@ public sealed class InferTypesPass() : Pass(PassName, PassScope.PerBuild)
     }
 
     /// <summary>
+    /// The return-flow checks shared by free functions, methods, interface defaults and extension
+    /// methods: every returned value must fit the declared return type, and the body must produce
+    /// one on every path. A <c>never</c> return type inverts both halves — no value may be returned
+    /// at all, and the body must not be able to complete normally.
+    /// </summary>
+    private void CheckReturnFlow(PassContext pc, TypID declared, List<(TypID typ, TextSpan span)> collected,
+        List<Stmt> body, ReturnStmt? tailReturn, TextSpan reportSpan)
+    {
+        if (declared == pc.Types.PrimNever.ID)
+        {
+            foreach (var (_, span) in collected)
+            {
+                pc.Diag.Report(span, DiagnosticCode.ErrNeverFunctionReturnsValue);
+            }
+
+            if (!FunctionBodyAlwaysReturns(pc, body, tailReturn))
+            {
+                pc.Diag.Report(reportSpan, DiagnosticCode.ErrNeverFunctionCompletes);
+            }
+
+            return;
+        }
+
+        foreach (var (typ, span) in collected)
+        {
+            EnsureAssignable(pc, span, declared, typ);
+        }
+
+        if (ReturnTypeRequiresValue(pc, declared) && !FunctionBodyAlwaysReturns(pc, body, tailReturn))
+        {
+            pc.Diag.Report(reportSpan, DiagnosticCode.ErrMissingReturn, TypeName(pc, declared));
+        }
+    }
+
+    /// <summary>
     /// A declared return type requires the body to actually produce a value on all paths
     /// only when it can hold neither nil nor "anything". Nilable types (`T?`, `nil`, `void`)
     /// tolerate a fall-through (which yields nil in Lua) and `any` opts out of the check.
@@ -2710,21 +2866,21 @@ public sealed class InferTypesPass() : Pass(PassName, PassScope.PerBuild)
     /// (stored separately from the body) short-circuits to true. The analysis is biased
     /// toward answering "yes" when unsure so it never produces a false "missing return".
     /// </summary>
-    private static bool FunctionBodyAlwaysReturns(List<Stmt> body, ReturnStmt? tailReturn)
+    private bool FunctionBodyAlwaysReturns(PassContext pc, List<Stmt> body, ReturnStmt? tailReturn)
     {
-        return tailReturn != null || BlockAlwaysExits(body);
+        return tailReturn != null || BlockAlwaysExits(pc, body);
     }
 
-    private static bool BlockAlwaysExits(List<Stmt> stmts)
+    private bool BlockAlwaysExits(PassContext pc, List<Stmt> stmts)
     {
         foreach (var stmt in stmts)
         {
-            if (StmtAlwaysExits(stmt)) return true;
+            if (StmtAlwaysExits(pc, stmt)) return true;
         }
         return false;
     }
 
-    private static bool StmtAlwaysExits(Stmt stmt)
+    private bool StmtAlwaysExits(PassContext pc, Stmt stmt)
     {
         switch (stmt)
         {
@@ -2734,15 +2890,15 @@ public sealed class InferTypesPass() : Pass(PassName, PassScope.PerBuild)
             case GotoStmt:
                 return true;
             case ExprStmt es:
-                return IsDivergingCall(es.Expression);
+                return IsDivergingCall(pc, es.Expression);
             case DoBlockStmt db:
-                return BlockAlwaysExits(db.Body);
+                return BlockAlwaysExits(pc, db.Body);
             case IfStmt ifs:
                 if (ifs.ElseBody == null) return false;
-                if (!BlockAlwaysExits(ifs.Body)) return false;
+                if (!BlockAlwaysExits(pc, ifs.Body)) return false;
                 foreach (var e in ifs.ElseIfs)
-                    if (!BlockAlwaysExits(e.Body)) return false;
-                return BlockAlwaysExits(ifs.ElseBody);
+                    if (!BlockAlwaysExits(pc, e.Body)) return false;
+                return BlockAlwaysExits(pc, ifs.ElseBody);
             case WhileStmt ws:
                 return IsLiteralTrue(ws.Condition) && !LoopHasEscapingBreak(ws.Body, 0);
             case RepeatStmt rp:
@@ -2751,7 +2907,7 @@ public sealed class InferTypesPass() : Pass(PassName, PassScope.PerBuild)
                 // No exhaustiveness reasoning here: if a match with all-exiting arms is not
                 // actually exhaustive, control falls through at runtime — treating it as
                 // exiting only risks a missed (never a false) missing-return diagnostic.
-                return ms.Arms.Count > 0 && ms.Arms.All(a => BlockAlwaysExits(a.Body));
+                return ms.Arms.Count > 0 && ms.Arms.All(a => BlockAlwaysExits(pc, a.Body));
             default:
                 return false;
         }
@@ -2801,17 +2957,16 @@ public sealed class InferTypesPass() : Pass(PassName, PassScope.PerBuild)
         }
     }
 
-    /// <summary>A call that never returns normally (<c>error(...)</c>, <c>os.exit(...)</c>).</summary>
-    private static bool IsDivergingCall(Expr expr)
+    /// <summary>
+    /// A call that never returns normally, i.e. one whose declared return type is <c>never</c>
+    /// (<c>error(...)</c>, <c>os.exit(...)</c>, or any user function declared that way). The
+    /// expression must already have been synthesized, which every caller guarantees by resolving
+    /// the enclosing body first.
+    /// </summary>
+    private bool IsDivergingCall(PassContext pc, Expr expr)
     {
-        if (expr is not FunctionCallExpr call) return false;
-        var callee = Unparen(call.Callee);
-        return callee switch
-        {
-            NameExpr ne => ne.Name.Name == "error",
-            DotAccessExpr { Object: NameExpr obj } da => obj.Name.Name == "os" && da.FieldName.Name == "exit",
-            _ => false
-        };
+        if (expr is not (FunctionCallExpr or MethodCallExpr)) return false;
+        return expr.Type == pc.Types.PrimNever.ID;
     }
 
     private static Expr Unparen(Expr expr) => expr is ParenExpr p ? Unparen(p.Inner) : expr;
@@ -2820,11 +2975,21 @@ public sealed class InferTypesPass() : Pass(PassName, PassScope.PerBuild)
 
     private static bool IsLiteralFalse(Expr expr) => Unparen(expr) is BoolLiteralExpr { Value: false };
 
+    /// <summary>
+    /// Whether a value of type <paramref name="src"/> may be assigned to a location of type
+    /// <paramref name="dst"/>. <c>never</c> is the bottom type: it fits every destination, and
+    /// nothing — not even <c>any</c> — fits a <c>never</c> destination, so both of its checks come
+    /// before the <c>any</c> short-circuit.
+    /// </summary>
     private bool IsTypeAssignable(PassContext pc, TypID dst, TypID src)
     {
         if (dst == src) return true;
         if (dst == TypID.Invalid || src == TypID.Invalid) return false;
         var tt = pc.Types;
+
+        if (src == tt.PrimNever.ID) return true;
+        if (dst == tt.PrimNever.ID) return false;
+
         if (dst == tt.PrimAny.ID || src == tt.PrimAny.ID) return true;
 
         // The `function` category accepts any concrete function signature.
@@ -3638,6 +3803,7 @@ public sealed class InferTypesPass() : Pass(PassName, PassScope.PerBuild)
                     TypeKind.PrimitiveFunction => "function",
                     TypeKind.PrimitiveThread => "thread",
                     TypeKind.PrimitiveUserdata => "userdata",
+                    TypeKind.PrimitiveNever => "never",
                     _ => "any"
                 };
         }

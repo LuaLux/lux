@@ -342,7 +342,7 @@ public static class DocCommentParser
         if (string.IsNullOrEmpty(s)) return false;
         if (s.IndexOfAny(['|', '?', '[', ']', '<', '>', '(', ')', '{', '}', ':', '.', ',']) >= 0)
             return true;
-        var primitives = new[] { "string", "number", "boolean", "integer", "any", "nil", "void", "table", "thread", "userdata", "function", "self" };
+        var primitives = new[] { "string", "number", "boolean", "integer", "any", "nil", "void", "never", "table", "thread", "userdata", "function", "self" };
         foreach (var prim in primitives)
             if (string.Equals(s, prim, StringComparison.Ordinal)) return true;
         if (char.IsUpper(s[0])) return true;

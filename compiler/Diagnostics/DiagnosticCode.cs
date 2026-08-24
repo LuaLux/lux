@@ -95,6 +95,12 @@ public enum DiagnosticCode
     ErrStringInterpolationDisabled = 0x1006,
 
     [Level(DiagnosticLevel.Error)]
+    [Category(DiagnosticCategory.Semantic)]
+    [Format("Code is unreachable: the preceding call to '{0}' returns 'never'")]
+    [Help("remove the dead code, or move it before the diverging call")]
+    ErrUnreachableAfterNever = 0x1007,
+
+    [Level(DiagnosticLevel.Error)]
     [Category(DiagnosticCategory.Syntax)]
     [Format("Alternative boolean operator '{0}' is disabled in the configuration. Enable [code] alt_boolean_operators = true to use it, or use '{1}' instead.")]
     ErrAltBooleanOperatorsDisabled = 0x0006,
@@ -354,6 +360,17 @@ public enum DiagnosticCode
     [Category(DiagnosticCategory.Semantic)]
     [Format("Instance method '{0}' on class '{1}' must be called with ':' (try `{2}:{0}(...)`); '.' would not pass the receiver as self")]
     ErrInstanceMethodNeedsColon = 0x4029,
+
+    [Level(DiagnosticLevel.Error)]
+    [Category(DiagnosticCategory.Type)]
+    [Format("A function returning 'never' must not be able to complete normally")]
+    [Help("end every path with a call that returns 'never' (such as `error(...)`), or with an endless loop")]
+    ErrNeverFunctionCompletes = 0x402A,
+
+    [Level(DiagnosticLevel.Error)]
+    [Category(DiagnosticCategory.Type)]
+    [Format("A function returning 'never' cannot return a value")]
+    ErrNeverFunctionReturnsValue = 0x402B,
 
     #endregion
 

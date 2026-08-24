@@ -363,6 +363,7 @@ public sealed class ValidateGenericConstraintsPass() : Pass(PassName, PassScope.
                 TypeKind.PrimitiveBool => "boolean",
                 TypeKind.PrimitiveNil => "nil",
                 TypeKind.PrimitiveAny => "any",
+                TypeKind.PrimitiveNever => "never",
                 _ => t.Kind.ToString()
             }
         };

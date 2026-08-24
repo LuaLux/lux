@@ -216,7 +216,7 @@
       "patterns": [
         {
           "name": "support.type.primitive.lux",
-          "match": "\\b(string|number|boolean|any|void)\\b"
+          "match": "\\b(string|number|boolean|any|void|never)\\b"
         },
         {
           "match": "(:)\\s*([A-Za-z_]\\w*)",

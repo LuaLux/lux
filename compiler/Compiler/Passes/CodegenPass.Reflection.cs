@@ -374,6 +374,7 @@ public sealed partial class CodegenPass
         TypeKind.PrimitiveFunction => "function",
         TypeKind.PrimitiveThread => "thread",
         TypeKind.PrimitiveUserdata => "userdata",
+        TypeKind.PrimitiveNever => "never",
         _ => "any"
     };
 

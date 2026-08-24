@@ -98,6 +98,28 @@ end
 -- x is `string` after the nil guard
 ```
 
+A guard branch counts as taken care of when it exits by any means — `return`, `break`, or a call to
+a function that returns [`never`](02-types.md#the-never-type):
+
+```lux
+local y: string? = getInput()
+
+if y == nil then
+    error("no input")
+end
+print(#y)               -- y is `string` here
+
+local z: string = getInput() or error("no input")
+```
+
+The narrowing lasts until the variable is assigned again, which restores its declared type:
+
+```lux
+if y == nil then return end
+-- y: string
+y = nil                 -- allowed: the assignment ends the narrowing
+```
+
 ## Configuration
 
 ```toml

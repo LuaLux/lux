@@ -25,6 +25,8 @@ public enum TypeKind
     PrimitiveThread,
     [Description("userdata")]
     PrimitiveUserdata,
+    [Description("never")]
+    PrimitiveNever,
     TableArray,
     TableMap,
     Tuple,
@@ -296,15 +298,27 @@ public sealed class UnionType(IEnumerable<Type> types) : Type(TypeKind.Union)
         return string.Join(" | ", typeKeys);
     }
 
+    /// <summary>
+    /// Flattens nested unions, drops duplicates, and drops <c>never</c> members: <c>never</c> is the
+    /// empty set of values, so <c>T | never</c> is just <c>T</c>. A union of nothing but <c>never</c>
+    /// stays <c>never</c> so the key never degenerates to the empty string.
+    /// </summary>
     private static List<Type> ConvertTypes(IEnumerable<Type> types)
     {
         var result = new List<Type>();
+        var never = default(Type);
         foreach (var t in types)
         {
             if (t is UnionType ut)
             {                
                 foreach (var member in ut.Types)
                 {
+                    if (member.Kind == TypeKind.PrimitiveNever)
+                    {
+                        never ??= member;
+                        continue;
+                    }
+
                     if (result.All(existing => existing.Key != member.Key))
                     {
                         result.Add(member);
@@ -313,6 +327,12 @@ public sealed class UnionType(IEnumerable<Type> types) : Type(TypeKind.Union)
             }
             else
             {
+                if (t.Kind == TypeKind.PrimitiveNever)
+                {
+                    never ??= t;
+                    continue;
+                }
+
                 if (result.All(existing => existing.Key != t.Key))
                 {
                     result.Add(t);
@@ -320,6 +340,7 @@ public sealed class UnionType(IEnumerable<Type> types) : Type(TypeKind.Union)
             }
         }
         
+        if (result.Count == 0 && never != null) result.Add(never);
         return result;
     }
 }
@@ -710,6 +731,13 @@ public sealed class TypeTable
     /// <summary>Canonical Lua <c>userdata</c> type.</summary>
     public Type PrimUserdata { get; }
 
+    /// <summary>
+    /// The bottom type <c>never</c>: the type of an expression that never produces a value because
+    /// control flow does not come back (<c>error(...)</c>, <c>os.exit(...)</c>). It is assignable to
+    /// every type and nothing but itself is assignable to it, and it disappears from unions.
+    /// </summary>
+    public Type PrimNever { get; }
+
     private readonly IDAlloc<TypID> _typeAlloc;
     private readonly Dictionary<TypeKey, TypID> _types = new();
     private readonly Dictionary<TypID, Type> _byID = new();
@@ -729,6 +757,7 @@ public sealed class TypeTable
         PrimFunction = DeclareType(new Type(TypeKind.PrimitiveFunction));
         PrimThread = DeclareType(new Type(TypeKind.PrimitiveThread));
         PrimUserdata = DeclareType(new Type(TypeKind.PrimitiveUserdata));
+        PrimNever = DeclareType(new Type(TypeKind.PrimitiveNever));
     }
 
     /// <summary>

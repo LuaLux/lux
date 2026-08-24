@@ -7,7 +7,7 @@ Lux is a typed superset of Lua. It adds optional type annotations, an ES-style m
 ### Language reference
 
  1. [Getting Started](01-getting-started.md) — Project setup, `lux.toml`, target versions, `lux build` / `lux run`
- 2. [Type System](02-types.md) — Primitives, nullable, union, array, map, struct, function, tuple, generic types
+ 2. [Type System](02-types.md) — Primitives, nullable, union, array, map, struct, function, tuple, generic types, `never`
  3. [Variables & Constants](03-variables.md) — `local`, `local mut`, immutability rules, deep freeze
  4. [Functions](04-functions.md) — Named, local, anonymous, default params, varargs, overloads, generics
  5. [Control Flow](05-control-flow.md) — `if`/`while`/`for`/`do` blocks, `break N`, `continue`, `goto`, labels

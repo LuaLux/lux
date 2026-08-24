@@ -30,7 +30,7 @@ declare function ipairs(t: any): any
 declare function pairs(t: any): any
 declare function next(t: any, key: any?): any
 declare function select(n: any, ...: any): any
-declare function error(message: any, level: number?): nil
+declare function error(message: any, level: number?): never
 declare function assert(v: any, message: any?): any
 declare function pcall(f: any, ...: any): any
 declare function xpcall(f: any, handler: any, ...: any): any
@@ -169,7 +169,7 @@ declare interface OsLib
     function date(format: string?, time: number?): any
     function difftime(t2: number, t1: number): number
     function execute(command: string?): any
-    function exit(code: any?, close: boolean?): nil
+    function exit(code: any?, close: boolean?): never
     function getenv(varname: string): string?
     function remove(filename: string): boolean
     function rename(oldname: string, newname: string): boolean

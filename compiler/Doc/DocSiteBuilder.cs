@@ -338,6 +338,10 @@ public static class DocSiteBuilder
                 TypeKind.PrimitiveBool => "boolean",
                 TypeKind.PrimitiveNil => "nil",
                 TypeKind.PrimitiveAny => "any",
+                TypeKind.PrimitiveFunction => "function",
+                TypeKind.PrimitiveThread => "thread",
+                TypeKind.PrimitiveUserdata => "userdata",
+                TypeKind.PrimitiveNever => "never",
                 _ => t.Kind.ToString().ToLowerInvariant()
             }
         };

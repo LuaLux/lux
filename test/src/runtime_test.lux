@@ -15,6 +15,7 @@ import { run as runAsync } from "10_async"
 import { run as runGenerics } from "11_generics"
 import { run as runNilability } from "12_nilability"
 import { run as runDeferGuard } from "13_defer_guard"
+import { run as runNever } from "14_never"
 
 runLiterals()
 runOperators()
@@ -29,3 +30,4 @@ runAsync()
 runGenerics()
 runNilability()
 runDeferGuard()
+runNever()

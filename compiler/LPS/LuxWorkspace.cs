@@ -1060,6 +1060,7 @@ public sealed class LuxWorkspace
             .Replace("PrimitiveThread", "thread")
             .Replace("PrimitiveUserdata", "userdata")
             .Replace("PrimitiveNil", "nil")
+            .Replace("PrimitiveNever", "never")
             .Replace("PrimitiveAny", "any");
     }
 

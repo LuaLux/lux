@@ -1,0 +1,67 @@
+import { section, expect, expectEq, expectError } from "_runner"
+
+--- A user-declared diverging function: the compiler knows control never comes back.
+function abort(reason: string): never
+    error(reason)
+end
+
+local function lookup(key: string): string?
+    if key == "known" then return "value" end
+    return nil
+end
+
+--- `or abort(...)` strips the nil off the left operand, so this returns `string`.
+local function requireValue(key: string): string
+    return lookup(key) or abort("missing " .. key)
+end
+
+--- A guard clause ending in a diverging call narrows the rest of the body.
+local function requireLength(key: string): number
+    local found: string? = lookup(key)
+    if found == nil then
+        abort("missing " .. key)
+    end
+    return #found
+end
+
+--- The narrowing ends at the next assignment, so the widened type is usable again.
+local function reassignAfterGuard(key: string): string
+    local found: string? = lookup(key)
+    if found == nil then
+        abort("missing " .. key)
+    end
+    found = nil
+    return found ?? "reset"
+end
+
+class Registry
+    entries: { [string]: string } = {}
+
+    function fetch(key: string): string
+        return self.entries[key] or abort("no entry " .. key)
+    end
+
+    function fail(key: string): never
+        error("registry failure: " .. key)
+    end
+end
+
+export function run(): nil
+    section("never")
+
+    expectEq("or-diverge yields the non-nil value", requireValue("known"), "value")
+    expectError("or-diverge raises on nil", function(): any return requireValue("other") end)
+
+    expectEq("guard clause narrows the rest of the body", requireLength("known"), 5)
+    expectError("guard clause raises on nil", function(): any return requireLength("other") end)
+
+    expectEq("assignment ends the narrowing", reassignAfterGuard("known"), "reset")
+
+    local registry = new Registry()
+    registry.entries["a"] = "alpha"
+    expectEq("method or-diverge yields the entry", registry:fetch("a"), "alpha")
+    expectError("method or-diverge raises when absent", function(): any return registry:fetch("b") end)
+    expectError("never-returning method raises", function(): any return registry:fail("x") end)
+
+    expect("os.exit is declared never", type(os.exit) == "function")
+end

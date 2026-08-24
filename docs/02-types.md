@@ -15,6 +15,7 @@ Lux adds an optional, gradual type system to Lua. All type annotations are compi
 | `function`| Any function           |
 | `thread`  | A coroutine            |
 | `userdata`| Opaque userdata        |
+| `never`   | The call never returns |
 
 ```lux
 local count: number = 42
@@ -112,6 +113,74 @@ local tag, x, y = tagged()            -- tag: string, x/y: number
 
 A `...T` return may yield zero values, so — like `void` — it is exempt from the "must return a
 value" check. When captured by a single variable it collapses to `T`.
+
+## The `never` Type
+
+`never` is the bottom type: the type of an expression that produces no value because control flow
+does not come back. A function declared to return `never` always raises, exits the process, or
+loops forever. The two standard library functions that behave this way are declared that way:
+
+```lux
+declare function error(message: any, level: number?): never
+-- and, inside the `os` library
+function exit(code: any?, close: boolean?): never
+```
+
+You can declare your own:
+
+```lux
+function panic(message: string): never
+    error("panic: " .. message)
+end
+```
+
+The compiler enforces the promise. A `never` function may not return a value and may not be able to
+reach its own end:
+
+```lux
+function bad(): never
+    print("still here")     -- error: a function returning 'never' must not complete normally
+end
+```
+
+### Unreachable code
+
+Anything after a call that returns `never` can never run, so the compiler rejects it:
+
+```lux
+error("stop")
+print("unreachable")        -- error: code is unreachable
+```
+
+### Narrowing
+
+Because a `never` branch cannot produce a value, it drops out of the type of the surrounding
+expression. In `a or b`, reaching the result means `a` was truthy, so its `nil` is stripped:
+
+```lux
+local ffi = require("ffi") or error("not luajit")
+-- `require` succeeded — a failure would have gone to `error`, which never returns
+
+local function name(id: number): string?
+    -- ...
+end
+
+local n = name(1) or panic("no name")   -- n: string, not string?
+```
+
+The same holds for a guard clause whose body diverges — see
+[Nilability & Optionals](14-nilability.md#nil-narrowing-in-conditionals):
+
+```lux
+local input: string? = read()
+if input == nil then
+    panic("no input")
+end
+print(#input)               -- input: string from here on
+```
+
+`never` also disappears from unions (`string | never` is `string`) and is assignable to every type,
+while nothing is assignable to it.
 
 ## Type Check Expression (`is`)
 
