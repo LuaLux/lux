@@ -20,7 +20,7 @@
   <a href="#five-minute-tour">Tour</a> &bull;
   <a href="#cli">CLI</a> &bull;
   <a href="#package-manager">Packages</a> &bull;
-  <a href="docs/README.md">Docs</a> &bull;
+  <a href="https://lualux.github.io">Docs</a> &bull;
   <a href="examples/">Examples</a> &bull;
   <a href="#contributing">Contributing</a>
 </p>
@@ -345,7 +345,7 @@ The result is a single self-contained executable: your compiled Lua + KeraLua + 
 | `lux version`            | Print the Lux version                                    |
 | `lux help`               | Show CLI help                                            |
 
-Detailed flags and behavior live in [`docs/17-cli-reference.md`](docs/17-cli-reference.md).
+Detailed flags and behavior live in the [CLI reference](https://lualux.github.io/docs/toolchain/cli).
 
 ---
 
@@ -383,7 +383,7 @@ Lux sparse-checks only that subdirectory and reads its `lux.toml` for the depend
 
 The package manager is roundtrip-safe with `lux.toml` (preserves formatting + comments on `lux add`/`remove`), supports lifecycle scripts gated behind `--allow-scripts`, and resolves transitive dependencies via per-package `lux.toml` files.
 
-See [`docs/18-package-manager.md`](docs/18-package-manager.md) for the full specification.
+See the [package manager guide](https://lualux.github.io/docs/toolchain/package-manager) for the full specification.
 
 ---
 
@@ -401,7 +401,6 @@ See [`docs/18-package-manager.md`](docs/18-package-manager.md) for the full spec
 │   ├-- Doc/            Doc comment parser + markdown/HTML renderer
 │   └-- stdlib/         Built-in .d.lux declarations + test framework Lua
 ├-- runtime/           Embedded Lua 5.4 runtime (KeraLua wrapper, stdlib bindings)
-├-- docs/              Language documentation
 ├-- examples/          Example projects (lux-strings, lua-math, zoo-app)
 ├-- test/              Runtime test suite (164 tests, all passing)
 ├-- vscode-lux/        VS Code extension source
@@ -445,29 +444,22 @@ Each pass declares its scope (per-file or per-build) and dependencies. The `Pass
 
 ## Documentation
 
-Full language reference lives in [`docs/`](docs/README.md). Highlights:
+The full language reference, guides and examples live at **[lualux.github.io](https://lualux.github.io)**.
 
-- [Getting Started](docs/01-getting-started.md) &mdash; project setup, `lux.toml`, target versions
-- [Type System](docs/02-types.md) &mdash; primitives, unions, generics, type aliases
-- [Variables & Constants](docs/03-variables.md) &mdash; mutability modifiers
-- [Functions](docs/04-functions.md) &mdash; default params, varargs, overloads
-- [Control Flow](docs/05-control-flow.md) &mdash; `if`/`while`/`for`/`break N`/`continue`/`goto`
-- [Operators](docs/06-operators.md) &mdash; arithmetic, bitwise, nil-coalescing, optional chaining
-- [Classes](docs/09-classes.md) &mdash; inheritance, abstract, `protected`, `static`, operator overloading
-- [Interfaces](docs/10-interfaces.md) &mdash; `implements`, interface inheritance
-- [Modules](docs/11-modules.md) &mdash; `import`/`export`, declaration modules
-- [Pattern Matching](docs/12-pattern-matching.md) &mdash; value/type/wildcard patterns, guards
-- [Async / Await](docs/13-async-await.md) &mdash; coroutine-based async functions
-- [Nilability](docs/14-nilability.md) &mdash; strict-nil, `??`, `!`, `?.`
-- [Declaration Files](docs/15-declarations.md) &mdash; typing external Lua APIs
-- [CLI Reference](docs/17-cli-reference.md) &mdash; every command, every flag
-- [Package Manager](docs/18-package-manager.md) &mdash; dependency specs, install pipeline, registry
-- [Annotations](docs/19-annotations.md) &mdash; compile-time IR rewrites
-- [Doc Comments](docs/20-doc-comments.md) &mdash; LuaCATS-style comments + `lux docs`
-- [Testing](docs/21-testing.md) &mdash; the `lux:test` framework + `lux test`
-- [REPL](docs/22-repl.md) &mdash; interactive sessions
-- [Standalone Binaries](docs/23-compiling.md) &mdash; `lux compile`
+- [Getting Started](https://lualux.github.io/docs/getting-started/installation) - install, first project, editor setup
+- [Type System](https://lualux.github.io/docs/language/types) - primitives, unions, generics, `never`
+- [Classes](https://lualux.github.io/docs/language/classes) - inheritance, abstract, `protected`, `static`, operators
+- [Interfaces](https://lualux.github.io/docs/language/interfaces) - `implements`, interface inheritance, default methods
+- [Modules](https://lualux.github.io/docs/language/modules) - `import`/`export`, declaration modules
+- [Pattern Matching](https://lualux.github.io/docs/language/pattern-matching) - value/type/wildcard patterns, guards
+- [Nilability](https://lualux.github.io/docs/language/nilability) - strict-nil, `??`, `!`, `?.`, flow narrowing
+- [CLI Reference](https://lualux.github.io/docs/toolchain/cli) - every command, every flag
+- [Package Manager](https://lualux.github.io/docs/toolchain/package-manager) - dependency specs, install pipeline
+- [Annotations](https://lualux.github.io/docs/advanced/annotations) - compile-time IR rewrites
+- [Configuration](https://lualux.github.io/docs/advanced/configuration) - every `lux.toml` key
+- [Examples](https://lualux.github.io/docs/examples/overview) - complete, runnable programs
 
+The site is built from [LuaLux/lualux.github.io](https://github.com/LuaLux/lualux.github.io).
 ---
 
 ## Examples

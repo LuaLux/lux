@@ -174,10 +174,16 @@ public sealed class InferTypesPass() : Pass(PassName, PassScope.PerBuild)
                parent.ScopeAlloc, parent.NodeAlloc, parent.Names, parent.Cache, parent.Config);
 
     /// <summary>
-    /// Types the declarations whose signature follows from their annotations alone, without
-    /// walking any body: <c>declare</c>d variables and functions (including module members) and
-    /// functions carrying an explicit return type. Phase 2 recomputes the same signatures from the
-    /// same annotations, so running this early only fills them in sooner.
+    /// Types the function signatures that follow from annotations alone, without walking any body:
+    /// <c>declare</c>d functions (including module members) and functions carrying an explicit
+    /// return type. Phase 2 recomputes the same signatures from the same annotations, so running
+    /// this early only fills them in sooner.
+    /// <para>
+    /// <c>declare</c>d <em>variables</em> are deliberately excluded. Their annotation is often a
+    /// named interface whose member table is not populated until phase 1, and typing the variable
+    /// before then would let a phase-1 body see an interface that still looks empty and report a
+    /// missing member that does exist.
+    /// </para>
     /// </summary>
     private void ResolveSignatures(PassContext pc, List<Stmt> stmts)
     {
@@ -191,9 +197,6 @@ public sealed class InferTypesPass() : Pass(PassName, PassScope.PerBuild)
     {
         switch (stmt)
         {
-            case DeclareVariableDecl dvd:
-                ResolveDecl(pc, dvd);
-                break;
             case DeclareFunctionDecl dfd:
                 ResolveDecl(pc, dfd);
                 break;
