@@ -85,6 +85,14 @@ class SizedBox implements Sized
     end
 end
 
+declare module "generated-shape"
+    interface GenShape
+        function area(): number
+    end
+
+    function genDescribe(s: GenShape, prefix: string = ...): string
+end
+
 declare function sizedDefault(a: number, b: string = ...): string
 
 local function usesDeclaredDefault(): string

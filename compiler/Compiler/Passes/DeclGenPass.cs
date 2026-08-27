@@ -223,10 +223,16 @@ public sealed class DeclGenPass() : Pass(PassName, PassScope.PerBuild, true)
         sb.AppendLine("    end");
     }
 
+    /// <summary>
+    /// Emits an exported function as a member of the surrounding <c>declare module</c>. Members
+    /// are written without the <c>declare</c> keyword: inside a module block the grammar expects
+    /// <c>function name(...)</c>, and a stray <c>declare</c> makes the parser close the module
+    /// early and hoist the function out of it, where the module's own types are not in scope.
+    /// </summary>
     private void EmitFunctionDeclaration(StringBuilder sb, PassContext ctx, PackageContext pkg,
         string exportName, FunctionDecl fd)
     {
-        sb.Append("    declare function ");
+        sb.Append("    function ");
         sb.Append(exportName);
 
         if (fd.MethodName != null)
@@ -245,7 +251,7 @@ public sealed class DeclGenPass() : Pass(PassName, PassScope.PerBuild, true)
     private void EmitLocalFunctionDeclaration(StringBuilder sb, PassContext ctx, PackageContext pkg,
         LocalFunctionDecl lfd)
     {
-        sb.Append("    declare function ");
+        sb.Append("    function ");
         sb.Append(lfd.Name.Name);
         sb.Append('(');
         EmitParams(sb, ctx, pkg, lfd.Parameters);
@@ -256,7 +262,7 @@ public sealed class DeclGenPass() : Pass(PassName, PassScope.PerBuild, true)
 
     private void EmitVarDeclaration(StringBuilder sb, PassContext ctx, PackageContext pkg, NameRef nameRef)
     {
-        sb.Append("    declare ");
+        sb.Append("    ");
         sb.Append(nameRef.Name);
         sb.Append(": ");
         sb.AppendLine(FormatSymType(ctx, pkg, nameRef));
