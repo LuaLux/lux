@@ -1,4 +1,4 @@
-using Nebra.Compiler;
+﻿using Nebra.Compiler;
 using Nebra.Configuration;
 using Nebra.IR;
 
@@ -201,7 +201,7 @@ public static class DocSiteBuilder
             {
                 Name = f.Name.Name,
                 Kind = DocMemberKind.Field,
-                Signature = $"{f.Name.Name}: {FormatSymbolType(pkg, f.Name)}",
+                Signature = $"{f.Name.Name}: {FormatAnnotatedType(pkg, f.TypeAnnotation, f.Name)}",
                 Doc = f.Doc,
                 IsStatic = f.IsStatic,
                 IsProtected = f.IsProtected
@@ -252,7 +252,7 @@ public static class DocSiteBuilder
             {
                 Name = f.Name.Name,
                 Kind = DocMemberKind.Field,
-                Signature = $"{f.Name.Name}: {FormatSymbolType(pkg, f.Name)}",
+                Signature = $"{f.Name.Name}: {FormatAnnotatedType(pkg, f.TypeAnnotation, f.Name)}",
                 Doc = f.Doc
             });
         }
@@ -301,6 +301,21 @@ public static class DocSiteBuilder
             }
         }
         return string.Join(", ", parts);
+    }
+
+    /// <summary>
+    /// Renders the type a member was annotated with. A class or interface field is a member rather
+    /// than a scope symbol, so there is no symbol carrying its type; the resolved annotation is what
+    /// holds it. Falls back to the symbol for anything that does have one.
+    /// </summary>
+    private static string FormatAnnotatedType(PackageContext pkg, TypeRef? typeRef, NameRef nameRef)
+    {
+        if (typeRef != null && typeRef.ResolvedType != TypID.Invalid)
+        {
+            return FormatType(pkg, typeRef.ResolvedType);
+        }
+
+        return FormatSymbolType(pkg, nameRef);
     }
 
     private static string FormatSymbolType(PackageContext pkg, NameRef nameRef)
