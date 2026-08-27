@@ -885,7 +885,8 @@ public sealed class InferTypesPass() : Pass(PassName, PassScope.PerBuild)
         {
             foreach (var (name, ft) in ifaceType.Methods)
             {
-                if (classType.Methods.TryGetValue(name, out var implemented))
+                var implemented = ResolveClassChainMethod(classType, name);
+                if (implemented != null)
                 {
                     CheckImplementedMethodSignature(pc, cd, ifaceType, name, ft, implemented);
                     continue;
@@ -904,7 +905,8 @@ public sealed class InferTypesPass() : Pass(PassName, PassScope.PerBuild)
 
             foreach (var (name, ifaceField) in ifaceType.Fields)
             {
-                if (classType.InstanceFields.TryGetValue(name, out var classField))
+                var classField = ResolveClassChainField(classType, name);
+                if (classField != null)
                 {
                     CheckImplementedFieldType(pc, cd, ifaceType, name, ifaceField, classField);
                     continue;
@@ -942,6 +944,37 @@ public sealed class InferTypesPass() : Pass(PassName, PassScope.PerBuild)
 
         if (iface.DefaultMethodNodes.TryGetValue(name, out var node))
             classType.DefaultsToEmit[name] = node;
+    }
+
+    /// <summary>
+    /// Finds the method that satisfies an interface requirement: the one the class declares, or
+    /// else the nearest one it inherits from a base class. A class implements an interface with
+    /// everything it has, not only with what it restates. Deliberately does not fall back to the
+    /// implemented interfaces the way <see cref="ResolveMethodOnType"/> does, since an interface
+    /// requirement cannot be satisfied by the requirement itself.
+    /// </summary>
+    private static FunctionType? ResolveClassChainMethod(ClassType classType, string name)
+    {
+        for (var cur = classType; cur != null; cur = cur.BaseClass)
+        {
+            if (cur.Methods.TryGetValue(name, out var ft)) return ft;
+        }
+
+        return null;
+    }
+
+    /// <summary>
+    /// The field counterpart of <see cref="ResolveClassChainMethod"/>: an inherited field
+    /// satisfies an interface field just as a declared one does.
+    /// </summary>
+    private static StructType.Field? ResolveClassChainField(ClassType classType, string name)
+    {
+        for (var cur = classType; cur != null; cur = cur.BaseClass)
+        {
+            if (cur.InstanceFields.TryGetValue(name, out var field)) return field;
+        }
+
+        return null;
     }
 
     /// <summary>
@@ -1016,19 +1049,19 @@ public sealed class InferTypesPass() : Pass(PassName, PassScope.PerBuild)
     }
 
     /// <summary>
-    /// Compares a method the class declares against the interface signature it implements.
-    /// Parameters are contravariant and the return type covariant, which is what keeps a call
-    /// routed through the interface sound: the caller passes the interface's parameter types and
-    /// expects its return type back. The stored class signature carries a synthetic <c>self</c>
-    /// the interface signature does not, so the comparison skips it.
+    /// Compares the method that satisfies an interface requirement against the signature the
+    /// interface declares. Parameters are contravariant and the return type covariant, which is
+    /// what keeps a call routed through the interface sound: the caller passes the interface's
+    /// parameter types and expects its return type back. The stored class signature carries a
+    /// synthetic <c>self</c> the interface signature does not, so the comparison skips it.
+    /// A member inherited from a base class has no declaration in this class, so the mismatch is
+    /// reported on the class header, where the <c>implements</c> promise was made.
     /// </summary>
     private void CheckImplementedMethodSignature(PassContext pc, ClassDecl cd, InterfaceType ifaceType,
         string name, FunctionType ifaceFt, FunctionType classFt)
     {
         var method = cd.Methods.FirstOrDefault(m => !m.IsStatic && !m.IsLocal && m.Name.Name == name);
-        if (method == null) return;
-
-        var span = method.Name.Span;
+        var span = method?.Name.Span ?? cd.Name.Span;
         var offset = StartsWithSelfParam(classFt) ? 1 : 0;
         var classParamCount = classFt.ParamTypes.Count - offset;
         var ifaceParamCount = ifaceFt.ParamTypes.Count;
