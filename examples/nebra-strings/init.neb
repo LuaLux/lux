@@ -1,0 +1,76 @@
+--- String manipulation utilities, written in Nebra.
+---
+--- This is the package entry. Importing the package as a whole
+--- (`import * as strings from "nebra-strings"`) exposes everything declared
+--- here; sub-modules in sibling files are reachable as `nebra-strings/<name>`.
+
+--- True when `i` (1-based) points at an ASCII whitespace character.
+---@param s the haystack
+---@param i 1-based index to inspect
+---@return boolean
+export function isWhitespace(s: string, i: number): boolean
+    if i < 1 or i > #s then return false end
+    local b: number = string.byte(s, i)
+    return b == 32 or b == 9 or b == 10 or b == 13
+end
+
+--- Trims ASCII whitespace from both ends of `s`.
+---@param s the input string
+---@return string the trimmed copy
+export function trim(s: string): string
+    local i: number = 1
+    local j: number = #s
+    while i <= j and isWhitespace(s, i) do
+        i = i + 1
+    end
+    while j >= i and isWhitespace(s, j) do
+        j = j - 1
+    end
+    return string.sub(s, i, j)
+end
+
+--- Repeats `s` exactly `n` times. Behaves like `string.rep` but with a
+--- non-negative bound check that returns `""` for `n <= 0`.
+---@param s the unit string to repeat
+---@param n the repetition count
+---@return string the repeated string, or "" when n <= 0
+export function repeatN(s: string, n: number): string
+    if n <= 0 then return "" end
+    return string.rep(s, n)
+end
+
+--- Pads `s` on the left until it reaches `width`. Pad defaults to a space;
+--- longer pad strings are repeated and clipped to fit.
+export function padLeft(s: string, width: number, pad: string?): string
+    local p: string = pad ?? " "
+    if #s >= width then return s end
+    local missing: number = width - #s
+    local filler: string = repeatN(p, missing)
+    return string.sub(filler, 1, missing) .. s
+end
+
+--- Pads `s` on the right; mirror image of `padLeft`.
+export function padRight(s: string, width: number, pad: string?): string
+    local p: string = pad ?? " "
+    if #s >= width then return s end
+    local missing: number = width - #s
+    local filler: string = repeatN(p, missing)
+    return s .. string.sub(filler, 1, missing)
+end
+
+--- Reports whether `s` starts with `prefix`.
+---@param s the haystack
+---@param prefix the candidate prefix
+---@return boolean true when prefix is empty or matches the leading characters
+export function startsWith(s: string, prefix: string): boolean
+    if #prefix == 0 then return true end
+    if #prefix > #s then return false end
+    return string.sub(s, 1, #prefix) == prefix
+end
+
+--- Reports whether `s` ends with `suffix`.
+export function endsWith(s: string, suffix: string): boolean
+    if #suffix == 0 then return true end
+    if #suffix > #s then return false end
+    return string.sub(s, #s - #suffix + 1, #s) == suffix
+end

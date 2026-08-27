@@ -1,4 +1,4 @@
-namespace Lux.PackageManager;
+namespace Nebra.PackageManager;
 
 /// <summary>
 /// Thrown by package-manager code for all user-visible install/resolve failures.

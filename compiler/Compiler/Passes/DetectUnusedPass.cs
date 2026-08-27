@@ -1,6 +1,6 @@
-﻿using Lux.IR;
+﻿using Nebra.IR;
 
-namespace Lux.Compiler.Passes;
+namespace Nebra.Compiler.Passes;
 
 /// <summary>
 /// The detect unused pass is responsible for detecting unused variables, functions, and other declarations in the

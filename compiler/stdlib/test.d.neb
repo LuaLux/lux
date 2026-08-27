@@ -1,0 +1,32 @@
+-- nebra:test — built-in test framework.
+--
+-- Use via `import { test, describe, expect } from "nebra:test"`. Tests register
+-- and run eagerly at module load time; the `nebra test` CLI requires each
+-- discovered test file in turn and then prints an aggregate report.
+
+declare module "nebra:test"
+    interface Assertion
+        function toBe(other: any): nil
+        function toEqual(other: any): nil
+        function toBeNear(other: number, eps: number?): nil
+        function toBeTruthy(): nil
+        function toBeFalsy(): nil
+        function toBeNil(): nil
+        function toBeDefined(): nil
+        function toContain(needle: any): nil
+        function toMatch(pattern: string): nil
+        function toHaveLength(n: number): nil
+        function toThrow(message: string?): nil
+        function toNotBe(other: any): nil
+        function toNotEqual(other: any): nil
+        function toNotContain(needle: any): nil
+    end
+
+    function test(name: string, fn: () -> nil): nil
+    function it(name: string, fn: () -> nil): nil
+    function describe(name: string, fn: () -> nil): nil
+    function beforeEach(fn: () -> nil): nil
+    function afterEach(fn: () -> nil): nil
+    function skip(name: string, fn: () -> nil): nil
+    function expect(value: any): Assertion
+end

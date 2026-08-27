@@ -1,13 +1,13 @@
-using Lux.IR;
+using Nebra.IR;
 using OmniSharp.Extensions.LanguageServer.Protocol.Client.Capabilities;
 using OmniSharp.Extensions.LanguageServer.Protocol.Document;
 using OmniSharp.Extensions.LanguageServer.Protocol.Models;
 
-using LuxSymbolKind = Lux.IR.SymbolKind;
+using NebraSymbolKind = Nebra.IR.SymbolKind;
 
-namespace Lux.LPS.Handlers;
+namespace Nebra.LPS.Handlers;
 
-public sealed class HoverHandler(LuxWorkspace workspace) : HoverHandlerBase
+public sealed class HoverHandler(NebraWorkspace workspace) : HoverHandlerBase
 {
     public override Task<Hover?> Handle(HoverParams request, CancellationToken ct)
     {
@@ -29,7 +29,7 @@ public sealed class HoverHandler(LuxWorkspace workspace) : HoverHandlerBase
             }
 
             var typeStr = workspace.FormatType(result.Types, effectiveType);
-            var kind = sym.Kind == LuxSymbolKind.Function ? "function" : "variable";
+            var kind = sym.Kind == NebraSymbolKind.Function ? "function" : "variable";
             string display;
 
             if (result.Types.GetByID(effectiveType, out var effTyp)
@@ -37,7 +37,7 @@ public sealed class HoverHandler(LuxWorkspace workspace) : HoverHandlerBase
             {
                 display = workspace.FormatTypeBody(result, effTyp);
             }
-            else if (sym.Kind == LuxSymbolKind.Function && result.Types.GetByID(sym.Type, out var typ) && typ is FunctionType ft)
+            else if (sym.Kind == NebraSymbolKind.Function && result.Types.GetByID(sym.Type, out var typ) && typ is FunctionType ft)
             {
                 List<Parameter>? declParams = null;
                 if (sym.DeclaringNode != NodeID.Invalid && result.NodeRegistry.TryGetValue(sym.DeclaringNode, out var dn))
@@ -108,7 +108,7 @@ public sealed class HoverHandler(LuxWorkspace workspace) : HoverHandlerBase
 
             var typesLine = workspace.FormatTypeReferencesLine(result, effectiveType);
             var docMarkdown = TryRenderDocFor(result, sym);
-            var hoverValue = $"```lux\n{display}\n```";
+            var hoverValue = $"```nebra\n{display}\n```";
             if (!string.IsNullOrEmpty(typesLine))
                 hoverValue += $"\n\n{typesLine}";
             if (!string.IsNullOrEmpty(docMarkdown))
@@ -121,7 +121,7 @@ public sealed class HoverHandler(LuxWorkspace workspace) : HoverHandlerBase
                     Kind = MarkupKind.Markdown,
                     Value = hoverValue
                 }),
-                Range = LuxWorkspace.SpanToRange(nameRef.Span)
+                Range = NebraWorkspace.SpanToRange(nameRef.Span)
             });
         }
 
@@ -141,9 +141,9 @@ public sealed class HoverHandler(LuxWorkspace workspace) : HoverHandlerBase
                 Contents = new MarkedStringsOrMarkupContent(new MarkupContent
                 {
                     Kind = MarkupKind.Markdown,
-                    Value = $"```lux\n{display}\n```"
+                    Value = $"```nebra\n{display}\n```"
                 }),
-                Range = LuxWorkspace.SpanToRange(annotation.Span)
+                Range = NebraWorkspace.SpanToRange(annotation.Span)
             });
         }
 
@@ -151,7 +151,7 @@ public sealed class HoverHandler(LuxWorkspace workspace) : HoverHandlerBase
         {
             var typeStr = workspace.FormatType(result.Types, expr.Type);
             var typesLine = workspace.FormatTypeReferencesLine(result, expr.Type);
-            var value = $"```lux\n{typeStr}\n```";
+            var value = $"```nebra\n{typeStr}\n```";
             if (!string.IsNullOrEmpty(typesLine)) value += $"\n\n{typesLine}";
             return Task.FromResult<Hover?>(new Hover
             {
@@ -160,7 +160,7 @@ public sealed class HoverHandler(LuxWorkspace workspace) : HoverHandlerBase
                     Kind = MarkupKind.Markdown,
                     Value = value
                 }),
-                Range = LuxWorkspace.SpanToRange(expr.Span)
+                Range = NebraWorkspace.SpanToRange(expr.Span)
             });
         }
 
@@ -213,7 +213,7 @@ public sealed class HoverHandler(LuxWorkspace workspace) : HoverHandlerBase
         var (display, declNode, typesLine) = ResolveMemberDisplay(result, recvType, memberName, isMethodCall);
         if (display == null) return null;
 
-        var hoverValue = $"```lux\n{display}\n```";
+        var hoverValue = $"```nebra\n{display}\n```";
         if (!string.IsNullOrEmpty(typesLine)) hoverValue += $"\n\n{typesLine}";
         if (declNode is Decl decl && decl.Doc != null)
         {
@@ -228,7 +228,7 @@ public sealed class HoverHandler(LuxWorkspace workspace) : HoverHandlerBase
                 Kind = MarkupKind.Markdown,
                 Value = hoverValue
             }),
-            Range = LuxWorkspace.SpanToRange(nameRef.Span)
+            Range = NebraWorkspace.SpanToRange(nameRef.Span)
         };
     }
 
@@ -416,7 +416,7 @@ public sealed class HoverHandler(LuxWorkspace workspace) : HoverHandlerBase
     {
         return new HoverRegistrationOptions
         {
-            DocumentSelector = TextDocumentSelector.ForLanguage("lux")
+            DocumentSelector = TextDocumentSelector.ForLanguage("nebra")
         };
     }
 }

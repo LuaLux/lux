@@ -1,6 +1,6 @@
-﻿using Lux.IR;
+﻿using Nebra.IR;
 
-namespace Lux.Compiler.Passes;
+namespace Nebra.Compiler.Passes;
 
 /// <summary>
 /// The mangle pass is responsible for mangling the names of variables, functions, and other symbols in the source code. 

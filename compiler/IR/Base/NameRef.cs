@@ -1,6 +1,6 @@
-﻿using Lux.Diagnostics;
+﻿using Nebra.Diagnostics;
 
-namespace Lux.IR;
+namespace Nebra.IR;
 
 /// <summary>
 /// The name reference. This is used to refer to a name in the IR, such as a variable, a function, a type, etc. It can

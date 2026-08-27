@@ -1,9 +1,9 @@
-using Lux.Configuration;
-using Lux.Diagnostics;
-using Lux.IR;
-using Type = Lux.IR.Type;
+using Nebra.Configuration;
+using Nebra.Diagnostics;
+using Nebra.IR;
+using Type = Nebra.IR.Type;
 
-namespace Lux.Compiler.Passes;
+namespace Nebra.Compiler.Passes;
 
 /// <summary>
 /// The infer types pass is responsible for inferring the types of expressions in the source code. It takes care of
@@ -59,7 +59,7 @@ public sealed class InferTypesPass() : Pass(PassName, PassScope.PerBuild)
     /// <para>
     /// Phase 1 resolves class, interface and extend declarations across the whole build so that
     /// expression-level checks in phase 2 see complete member tables. Without it an installed
-    /// types-only package whose <c>.d.lux</c> is processed after a consumer's source file would
+    /// types-only package whose <c>.d.neb</c> is processed after a consumer's source file would
     /// leave <c>Entity.Methods</c> empty when <c>Entity.Subscribe(...)</c> is checked, and the call
     /// would fall through to <c>any</c>.
     /// </para>
@@ -254,7 +254,7 @@ public sealed class InferTypesPass() : Pass(PassName, PassScope.PerBuild)
     /// Pre-phase: visit every declaration that contributes type info to the
     /// symbol table (class/interface members, declare-variable types,
     /// declare-function signatures, declare-module members). Without this,
-    /// e.g. `declare Steam: SteamStatic` in a freshly-loaded .d.lux file
+    /// e.g. `declare Steam: SteamStatic` in a freshly-loaded .d.neb file
     /// would not have its symbol typed until that file's normal walk —
     /// which might happen AFTER a consumer file uses `Steam.X` and falls
     /// through to `any`. Body resolution on classes/interfaces happens here
@@ -607,7 +607,7 @@ public sealed class InferTypesPass() : Pass(PassName, PassScope.PerBuild)
             if (sym.Name == "self" && sym.DeclaringNode == cd.ID && sym.Type == TypID.Invalid)
                 pc.Pkg.Syms.SetType(id, classType.ID);
 
-        var ctorTemplate = Lux.Compiler.Annotations.BuiltinAnnotations.ExtractOverrideCtor(cd.Annotations);
+        var ctorTemplate = Nebra.Compiler.Annotations.BuiltinAnnotations.ExtractOverrideCtor(cd.Annotations);
         if (ctorTemplate != null) classType.CtorTemplate = ctorTemplate;
 
         if (cd.BaseClass != null && cd.BaseClass.Sym != SymID.Invalid)
@@ -652,7 +652,7 @@ public sealed class InferTypesPass() : Pass(PassName, PassScope.PerBuild)
                 ctorParams.Add(new Tuple<string, Type>(p.Name.Name, t));
             }
             classType.ConstructorType = (FunctionType)GetType(pc, pc.Types.FuncOf(ctorParams, classType));
-            var ctorSide = Lux.Compiler.Annotations.BuiltinAnnotations.ExtractSide(cd.Constructor.Annotations,
+            var ctorSide = Nebra.Compiler.Annotations.BuiltinAnnotations.ExtractSide(cd.Constructor.Annotations,
                 (ann, badName) => ReportBadSide(pc, ann, badName));
             classType.ConstructorSide = ctorSide;
 
@@ -699,7 +699,7 @@ public sealed class InferTypesPass() : Pass(PassName, PassScope.PerBuild)
             var funcTypId = pc.Types.FuncOf(methodParams, retType, isVararg, varargType, defaultIndices.Count > 0 ? defaultIndices : null, method.IsAsync,
                 predicate: BuildPredicate(pc, method.ReturnType, method.Parameters));
             var ft = (FunctionType)GetType(pc, funcTypId);
-            var methodSide = Lux.Compiler.Annotations.BuiltinAnnotations.ExtractSide(method.Annotations,
+            var methodSide = Nebra.Compiler.Annotations.BuiltinAnnotations.ExtractSide(method.Annotations,
                 (ann, badName) => ReportBadSide(pc, ann, badName));
             if (method.IsStatic)
                 AppendOverload(classType.StaticMethods, classType.StaticMethodOverloads,
@@ -963,7 +963,7 @@ public sealed class InferTypesPass() : Pass(PassName, PassScope.PerBuild)
             var ifaceFt = (FunctionType)GetType(pc,
                 pc.Types.FuncOf(methodParams, retType, ifaceIsVararg, ifaceVarargType, isAsync: method.IsAsync,
                     predicate: BuildPredicate(pc, method.ReturnType, method.Parameters)));
-            var methodSide = Lux.Compiler.Annotations.BuiltinAnnotations.ExtractSide(method.Annotations,
+            var methodSide = Nebra.Compiler.Annotations.BuiltinAnnotations.ExtractSide(method.Annotations,
                 (ann, badName) => ReportBadSide(pc, ann, badName));
             AppendOverload(ifaceType.Methods, ifaceType.MethodOverloads,
                 ifaceType.MethodOverloadSides, method.Name.Name, ifaceFt, methodSide);
@@ -1115,7 +1115,7 @@ public sealed class InferTypesPass() : Pass(PassName, PassScope.PerBuild)
     private static void StampMemberSide(PassContext pc, List<Annotation> annotations, Dictionary<string, Side> sides, string memberName)
     {
         if (annotations == null || annotations.Count == 0) return;
-        var side = Lux.Compiler.Annotations.BuiltinAnnotations.ExtractSide(annotations,
+        var side = Nebra.Compiler.Annotations.BuiltinAnnotations.ExtractSide(annotations,
             (ann, badName) => ReportBadSide(pc, ann, badName));
         if (side != Side.All) sides[memberName] = side;
     }

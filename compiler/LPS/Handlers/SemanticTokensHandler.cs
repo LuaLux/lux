@@ -1,14 +1,14 @@
 using Antlr4.Runtime;
-using Lux.IR;
+using Nebra.IR;
 using OmniSharp.Extensions.LanguageServer.Protocol.Client.Capabilities;
 using OmniSharp.Extensions.LanguageServer.Protocol.Document;
 using OmniSharp.Extensions.LanguageServer.Protocol.Models;
 
-using LuxSymbolKind = Lux.IR.SymbolKind;
+using NebraSymbolKind = Nebra.IR.SymbolKind;
 
-namespace Lux.LPS.Handlers;
+namespace Nebra.LPS.Handlers;
 
-public sealed class SemanticTokensHandler(LuxWorkspace workspace) : SemanticTokensHandlerBase
+public sealed class SemanticTokensHandler(NebraWorkspace workspace) : SemanticTokensHandlerBase
 {
     private const int TK_KEYWORD = 0;
     private const int TK_STRING = 1;
@@ -32,7 +32,7 @@ public sealed class SemanticTokensHandler(LuxWorkspace workspace) : SemanticToke
     {
         return new SemanticTokensRegistrationOptions
         {
-            DocumentSelector = TextDocumentSelector.ForLanguage("lux"),
+            DocumentSelector = TextDocumentSelector.ForLanguage("nebra"),
             Legend = new SemanticTokensLegend
             {
                 TokenTypes = new Container<SemanticTokenType>(
@@ -59,7 +59,7 @@ public sealed class SemanticTokensHandler(LuxWorkspace workspace) : SemanticToke
         foreach (var token in tokens)
         {
             if (token.Type == -1) continue;
-            if (token.Channel != 0 && token.Type != LuxLexer.LONG_COMMENT && token.Type != LuxLexer.LINE_COMMENT)
+            if (token.Channel != 0 && token.Type != NebraLexer.LONG_COMMENT && token.Type != NebraLexer.LINE_COMMENT)
                 continue;
 
             var line = token.Line - 1;
@@ -100,11 +100,11 @@ public sealed class SemanticTokensHandler(LuxWorkspace workspace) : SemanticToke
 
             var tokenType = sym.Kind switch
             {
-                LuxSymbolKind.Function => TK_FUNCTION,
-                LuxSymbolKind.Enum => TK_TYPE,
-                LuxSymbolKind.Class => TK_TYPE,
-                LuxSymbolKind.Interface => TK_TYPE,
-                LuxSymbolKind.TypeParam => TK_TYPE_PARAMETER,
+                NebraSymbolKind.Function => TK_FUNCTION,
+                NebraSymbolKind.Enum => TK_TYPE,
+                NebraSymbolKind.Class => TK_TYPE,
+                NebraSymbolKind.Interface => TK_TYPE,
+                NebraSymbolKind.TypeParam => TK_TYPE_PARAMETER,
                 _ => -1
             };
 
@@ -203,7 +203,7 @@ public sealed class SemanticTokensHandler(LuxWorkspace workspace) : SemanticToke
             case DotAccessExpr dot:
                 CollectEnumMemberFromExpr(result, dot.Object, overrides);
                 if (dot.Object is NameExpr ne && ne.Name.Sym != SymID.Invalid &&
-                    result.Syms.GetByID(ne.Name.Sym, out var sym) && sym.Kind == LuxSymbolKind.Enum)
+                    result.Syms.GetByID(ne.Name.Sym, out var sym) && sym.Kind == NebraSymbolKind.Enum)
                 {
                     var line = dot.FieldName.Span.StartLn - 1;
                     var col = dot.FieldName.Span.StartCol - 1;
@@ -259,34 +259,34 @@ public sealed class SemanticTokensHandler(LuxWorkspace workspace) : SemanticToke
     {
         return type switch
         {
-            LuxLexer.AND or LuxLexer.BREAK or LuxLexer.DO or LuxLexer.ELSE or LuxLexer.ELSEIF
-                or LuxLexer.END or LuxLexer.FALSE or LuxLexer.FOR or LuxLexer.FUNCTION
-                or LuxLexer.GOTO or LuxLexer.IF or LuxLexer.IN or LuxLexer.LOCAL or LuxLexer.NIL
-                or LuxLexer.NOT or LuxLexer.OR or LuxLexer.REPEAT or LuxLexer.RETURN
-                or LuxLexer.THEN or LuxLexer.TRUE or LuxLexer.UNTIL or LuxLexer.WHILE
-                or LuxLexer.AS or LuxLexer.IS or LuxLexer.DECLARE or LuxLexer.EXPORT or LuxLexer.FROM
-                or LuxLexer.ASYNC or LuxLexer.AWAIT or LuxLexer.CASE or LuxLexer.ENUM
-                or LuxLexer.IMPORT or LuxLexer.MATCH or LuxLexer.META or LuxLexer.MODULE
-                or LuxLexer.MUT or LuxLexer.WHEN or LuxLexer.CLASS or LuxLexer.INTERFACE
-                or LuxLexer.EXTENDS or LuxLexer.EXTEND or LuxLexer.IMPLEMENTS or LuxLexer.CONSTRUCTOR
-                or LuxLexer.STATIC or LuxLexer.NEW or LuxLexer.SUPER
-                or LuxLexer.ABSTRACT or LuxLexer.OVERRIDE or LuxLexer.PROTECTED
-                or LuxLexer.TYPEOF or LuxLexer.INSTANCEOF
-                or LuxLexer.DEFER or LuxLexer.GUARD or LuxLexer.CONTINUE
+            NebraLexer.AND or NebraLexer.BREAK or NebraLexer.DO or NebraLexer.ELSE or NebraLexer.ELSEIF
+                or NebraLexer.END or NebraLexer.FALSE or NebraLexer.FOR or NebraLexer.FUNCTION
+                or NebraLexer.GOTO or NebraLexer.IF or NebraLexer.IN or NebraLexer.LOCAL or NebraLexer.NIL
+                or NebraLexer.NOT or NebraLexer.OR or NebraLexer.REPEAT or NebraLexer.RETURN
+                or NebraLexer.THEN or NebraLexer.TRUE or NebraLexer.UNTIL or NebraLexer.WHILE
+                or NebraLexer.AS or NebraLexer.IS or NebraLexer.DECLARE or NebraLexer.EXPORT or NebraLexer.FROM
+                or NebraLexer.ASYNC or NebraLexer.AWAIT or NebraLexer.CASE or NebraLexer.ENUM
+                or NebraLexer.IMPORT or NebraLexer.MATCH or NebraLexer.META or NebraLexer.MODULE
+                or NebraLexer.MUT or NebraLexer.WHEN or NebraLexer.CLASS or NebraLexer.INTERFACE
+                or NebraLexer.EXTENDS or NebraLexer.EXTEND or NebraLexer.IMPLEMENTS or NebraLexer.CONSTRUCTOR
+                or NebraLexer.STATIC or NebraLexer.NEW or NebraLexer.SUPER
+                or NebraLexer.ABSTRACT or NebraLexer.OVERRIDE or NebraLexer.PROTECTED
+                or NebraLexer.TYPEOF or NebraLexer.INSTANCEOF
+                or NebraLexer.DEFER or NebraLexer.GUARD or NebraLexer.CONTINUE
                 => 0, // keyword
 
-            LuxLexer.NORMAL_STRING or LuxLexer.CHAR_STRING or LuxLexer.LONG_STRING
+            NebraLexer.NORMAL_STRING or NebraLexer.CHAR_STRING or NebraLexer.LONG_STRING
                 => 1, // string
 
-            LuxLexer.INT or LuxLexer.HEX or LuxLexer.FLOAT or LuxLexer.HEX_FLOAT
+            NebraLexer.INT or NebraLexer.HEX or NebraLexer.FLOAT or NebraLexer.HEX_FLOAT
                 => 2, // number
 
-            LuxLexer.LONG_COMMENT or LuxLexer.LINE_COMMENT
+            NebraLexer.LONG_COMMENT or NebraLexer.LINE_COMMENT
                 => 3, // comment
 
-            LuxLexer.AT => TK_DECORATOR, // annotation @
+            NebraLexer.AT => TK_DECORATOR, // annotation @
 
-            LuxLexer.NAME => 4, // variable (default for identifiers)
+            NebraLexer.NAME => 4, // variable (default for identifiers)
 
             _ => -1
         };

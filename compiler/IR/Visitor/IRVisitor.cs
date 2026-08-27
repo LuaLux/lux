@@ -1,13 +1,13 @@
-using Lux.Configuration;
-using Lux.Diagnostics;
+using Nebra.Configuration;
+using Nebra.Diagnostics;
 
-namespace Lux.IR;
+namespace Nebra.IR;
 
-internal partial class IRVisitor(string? filename, IDAlloc<NodeID> nodeAlloc, DiagnosticsBag diag, Config? config = null) : LuxBaseVisitor<Node>
+internal partial class IRVisitor(string? filename, IDAlloc<NodeID> nodeAlloc, DiagnosticsBag diag, Config? config = null) : NebraBaseVisitor<Node>
 {
     private readonly Config _config = config ?? new Config();
 
-    public override Node VisitScript(LuxParser.ScriptContext context)
+    public override Node VisitScript(NebraParser.ScriptContext context)
     {
         var (body, ret) = VisitBlockContent(context.block());
         var prefix = BuildAutoImports(context);
@@ -23,7 +23,7 @@ internal partial class IRVisitor(string? filename, IDAlloc<NodeID> nodeAlloc, Di
         };
     }
 
-    private List<Stmt> BuildAutoImports(LuxParser.ScriptContext context)
+    private List<Stmt> BuildAutoImports(NebraParser.ScriptContext context)
     {
         var result = new List<Stmt>();
         if (_config.Code.AutoImports.Count == 0) return result;
@@ -48,7 +48,7 @@ internal partial class IRVisitor(string? filename, IDAlloc<NodeID> nodeAlloc, Di
 
     /// <summary>
     /// Detects whether the current file IS the auto-imported target so we
-    /// don't make Shared/Index.lux import itself. Match is done on filename
+    /// don't make Shared/Index.neb import itself. Match is done on filename
     /// stem because the auto-import entry is path-like ("src/Shared/Index")
     /// while filename is filesystem-absolute.
     /// </summary>
@@ -56,9 +56,9 @@ internal partial class IRVisitor(string? filename, IDAlloc<NodeID> nodeAlloc, Di
     {
         if (string.IsNullOrEmpty(filename)) return false;
         // Compare normalised tail of the filename against the entry, ignoring
-        // a `.lux` suffix and case differences (Windows / macOS paths).
+        // a `.neb` suffix and case differences (Windows / macOS paths).
         var fileStem = filename.Replace('\\', '/');
-        if (fileStem.EndsWith(".lux", StringComparison.OrdinalIgnoreCase))
+        if (fileStem.EndsWith(".neb", StringComparison.OrdinalIgnoreCase))
             fileStem = fileStem[..^4];
         var entryNorm = entry.Replace('\\', '/').TrimStart('.', '/');
         return fileStem.EndsWith("/" + entryNorm, StringComparison.OrdinalIgnoreCase)
@@ -76,12 +76,12 @@ internal partial class IRVisitor(string? filename, IDAlloc<NodeID> nodeAlloc, Di
         var parts = entry.Replace('\\', '/').Split('/', StringSplitOptions.RemoveEmptyEntries);
         if (parts.Length == 0) return null;
         var last = parts[^1];
-        if (last.EndsWith(".lux", StringComparison.OrdinalIgnoreCase))
+        if (last.EndsWith(".neb", StringComparison.OrdinalIgnoreCase))
             last = last[..^4];
         if (string.Equals(last, "Index", StringComparison.OrdinalIgnoreCase) && parts.Length >= 2)
         {
             var prev = parts[^2];
-            if (prev.EndsWith(".lux", StringComparison.OrdinalIgnoreCase))
+            if (prev.EndsWith(".neb", StringComparison.OrdinalIgnoreCase))
                 prev = prev[..^4];
             return SanitizeIdent(prev);
         }

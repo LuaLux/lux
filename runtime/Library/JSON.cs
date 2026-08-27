@@ -1,17 +1,17 @@
 using System.Text;
 using System.Text.Json;
-using Lux.Runtime.Bindings;
+using Nebra.Runtime.Bindings;
 
-namespace Lux.Runtime.Library;
+namespace Nebra.Runtime.Library;
 
-[LuxExport("json")]
+[NebraExport("json")]
 public sealed class JSON
 {
     /// <summary>
     /// Encodes a value tree to a JSON string. Pass <c>pretty = true</c> to
     /// get indented output.
     /// </summary>
-    [LuxExport("encode")]
+    [NebraExport("encode")]
     public static string Encode(object? value, bool pretty = false)
     {
         var opts = new JsonSerializerOptions { WriteIndented = pretty };
@@ -22,14 +22,14 @@ public sealed class JSON
     /// Decodes a JSON string into a value tree. Objects become tables with
     /// string keys; arrays become 1-indexed array-tables.
     /// </summary>
-    [LuxExport("decode")]
+    [NebraExport("decode")]
     public static object? Decode(string json)
     {
         using var doc = JsonDocument.Parse(json);
         return FromJsonElement(doc.RootElement);
     }
 
-    [LuxExport("pretty")]
+    [NebraExport("pretty")]
     public static string Pretty(object? value) => Encode(value, pretty: true);
 
     private static object? ToJsonValue(object? value)

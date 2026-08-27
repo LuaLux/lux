@@ -1,8 +1,8 @@
-using Lux.Compiler.Codegen;
-using Lux.Diagnostics;
-using Lux.IR;
+using Nebra.Compiler.Codegen;
+using Nebra.Diagnostics;
+using Nebra.IR;
 
-namespace Lux.Compiler.Passes;
+namespace Nebra.Compiler.Passes;
 
 public sealed partial class CodegenPass() : Pass(PassName, PassScope.PerBuild, true)
 {

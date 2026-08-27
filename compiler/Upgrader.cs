@@ -7,12 +7,12 @@ using System.Runtime.InteropServices;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 
-namespace Lux;
+namespace Nebra;
 
 internal static class Upgrader
 {
-    private const string GithubReleasesLatestUrl = "https://api.github.com/repos/LuaLux/lux/releases/latest";
-    private const string UserAgent = "lux-cli";
+    private const string GithubReleasesLatestUrl = "https://api.github.com/repos/nebra-lang/nebra/releases/latest";
+    private const string UserAgent = "nebra-cli";
     private static readonly TimeSpan CacheTtl = TimeSpan.FromHours(24);
     private static readonly TimeSpan NotifyTimeout = TimeSpan.FromSeconds(2);
 
@@ -38,14 +38,14 @@ internal static class Upgrader
             return 1;
         }
 
-        var current = Program.GetLuxVersion();
+        var current = Program.GetNebraVersion();
         var latest = release.TagName.TrimStart('v');
 
         WriteCache(latest);
 
         if (!force && CompareSemver(current, latest) >= 0)
         {
-            Console.WriteLine($"lux is already at the latest version ({current}).");
+            Console.WriteLine($"nebra is already at the latest version ({current}).");
             return 0;
         }
 
@@ -68,8 +68,8 @@ internal static class Upgrader
         Console.WriteLine($"Latest:  {latest}");
         Console.WriteLine($"Downloading {assetName}...");
 
-        var tempArchive = Path.Combine(Path.GetTempPath(), $"lux-upgrade-{Guid.NewGuid():N}{(assetName.EndsWith(".tar.gz", StringComparison.OrdinalIgnoreCase) ? ".tar.gz" : Path.GetExtension(assetName))}");
-        var tempDir = Path.Combine(Path.GetTempPath(), $"lux-upgrade-{Guid.NewGuid():N}");
+        var tempArchive = Path.Combine(Path.GetTempPath(), $"nebra-upgrade-{Guid.NewGuid():N}{(assetName.EndsWith(".tar.gz", StringComparison.OrdinalIgnoreCase) ? ".tar.gz" : Path.GetExtension(assetName))}");
+        var tempDir = Path.Combine(Path.GetTempPath(), $"nebra-upgrade-{Guid.NewGuid():N}");
         try
         {
             await DownloadAsync(asset.BrowserDownloadUrl, tempArchive);
@@ -79,7 +79,7 @@ internal static class Upgrader
             await ExtractAsync(tempArchive, tempDir);
 
             var isWindows = RuntimeInformation.IsOSPlatform(OSPlatform.Windows);
-            var binaryName = isWindows ? "lux.exe" : "lux";
+            var binaryName = isWindows ? "nebra.exe" : "nebra";
             var newBinary = FindBinary(tempDir, binaryName);
             if (newBinary == null)
             {
@@ -103,7 +103,7 @@ internal static class Upgrader
             {
                 var hint = isWindows
                     ? "Try again from an Administrator shell."
-                    : "Try: sudo lux upgrade  (or reinstall lux to a user-writable path).";
+                    : "Try: sudo nebra upgrade  (or reinstall nebra to a user-writable path).";
                 await Console.Error.WriteLineAsync($"Permission denied writing to {currentPath}. {hint}");
                 return 1;
             }
@@ -112,11 +112,11 @@ internal static class Upgrader
                 Console.WriteLine($"In-place replace failed ({inPlaceEx.GetType().Name}: {inPlaceEx.Message}).");
                 Console.WriteLine("Scheduling deferred upgrade — a helper will apply it once this process exits.");
                 SpawnDeferredHelper(currentPath, newBinary);
-                Console.WriteLine($"Update will land at {currentPath} shortly. Run `lux version` afterwards to confirm.");
+                Console.WriteLine($"Update will land at {currentPath} shortly. Run `nebra version` afterwards to confirm.");
                 return 0;
             }
 
-            Console.WriteLine($"Updated lux: {current} -> {latest}");
+            Console.WriteLine($"Updated nebra: {current} -> {latest}");
             return 0;
         }
         catch (Exception ex)
@@ -133,7 +133,7 @@ internal static class Upgrader
 
     public static async Task<int> RunCheckAsync()
     {
-        var current = Program.GetLuxVersion();
+        var current = Program.GetNebraVersion();
         Console.WriteLine($"Current: {current}");
 
         GitHubRelease? release;
@@ -159,12 +159,12 @@ internal static class Upgrader
         Console.WriteLine($"Latest:  {latest}");
         if (CompareSemver(current, latest) >= 0)
         {
-            Console.WriteLine("lux is up to date.");
+            Console.WriteLine("nebra is up to date.");
             return 0;
         }
 
         Console.WriteLine();
-        Console.WriteLine("A newer version is available. Run `lux upgrade` to install it.");
+        Console.WriteLine("A newer version is available. Run `nebra upgrade` to install it.");
         return 0;
     }
 
@@ -173,7 +173,7 @@ internal static class Upgrader
         try
         {
             var cache = ReadCache();
-            var current = Program.GetLuxVersion();
+            var current = Program.GetNebraVersion();
 
             if (cache != null && DateTimeOffset.UtcNow - cache.CheckedAt < CacheTtl)
             {
@@ -214,12 +214,12 @@ internal static class Upgrader
     private static void SpawnDeferredHelper(string currentPath, string newBinary)
     {
         var isWindows = RuntimeInformation.IsOSPlatform(OSPlatform.Windows);
-        var helperDir = Path.Combine(Path.GetTempPath(), $"lux-upgrade-helper-{Guid.NewGuid():N}");
+        var helperDir = Path.Combine(Path.GetTempPath(), $"nebra-upgrade-helper-{Guid.NewGuid():N}");
         Directory.CreateDirectory(helperDir);
 
-        var helperBinaryName = isWindows ? "lux-helper.exe" : "lux-helper";
+        var helperBinaryName = isWindows ? "nebra-helper.exe" : "nebra-helper";
         var helperBinary = Path.Combine(helperDir, helperBinaryName);
-        var stagedSource = Path.Combine(helperDir, isWindows ? "lux.new.exe" : "lux.new");
+        var stagedSource = Path.Combine(helperDir, isWindows ? "nebra.new.exe" : "nebra.new");
         var logPath = Path.Combine(helperDir, "log.txt");
 
         File.Copy(newBinary, helperBinary, overwrite: true);
@@ -264,9 +264,9 @@ internal static class Upgrader
     }
 
     /// <summary>
-    /// Helper-Entry-Point. Wartet bis der aufrufende lux-Prozess weg ist, dann
+    /// Helper-Entry-Point. Wartet bis der aufrufende nebra-Prozess weg ist, dann
     /// überschreibt das Ziel mit der Staged-Source. Mehrere Retries weil
-    /// andere lux-Prozesse (z.B. ein parallel laufender <c>lux lps</c> im VS
+    /// andere nebra-Prozesse (z.B. ein parallel laufender <c>nebra lps</c> im VS
     /// Code) das Ziel kurzzeitig noch mappen können.
     /// </summary>
     public static async Task<int> RunDeferredApplyAsync(string[] args)
@@ -386,8 +386,8 @@ internal static class Upgrader
     {
         if (CompareSemver(current, latest) >= 0) return;
         Console.WriteLine();
-        Console.WriteLine($"A new version of lux is available: {current} -> {latest}");
-        Console.WriteLine("Run `lux upgrade` to update.");
+        Console.WriteLine($"A new version of nebra is available: {current} -> {latest}");
+        Console.WriteLine("Run `nebra upgrade` to update.");
     }
 
     private static async Task<GitHubRelease?> FetchLatestReleaseAsync(CancellationToken ct)
@@ -499,11 +499,11 @@ internal static class Upgrader
         if (arch == null) return null;
 
         if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
-            return $"lux-linux-{arch}.tar.gz";
+            return $"nebra-linux-{arch}.tar.gz";
         if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
-            return arch == "arm64" ? "lux-osx-arm64.tar.gz" : null;
+            return arch == "arm64" ? "nebra-osx-arm64.tar.gz" : null;
         if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
-            return $"lux-win-{arch}.zip";
+            return $"nebra-win-{arch}.zip";
         return null;
     }
 
@@ -514,7 +514,7 @@ internal static class Upgrader
             // Windows locks running .exe files: overwrite/delete are forbidden,
             // but rename of the running .exe is allowed. Move current out of the
             // way, drop the new binary in. The .old file is removed on the next
-            // lux invocation (see CleanupStaleBackup).
+            // nebra invocation (see CleanupStaleBackup).
             var oldPath = currentPath + ".old";
             if (File.Exists(oldPath))
             {
@@ -577,7 +577,7 @@ internal static class Upgrader
     {
         var baseDir = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
         if (string.IsNullOrEmpty(baseDir)) baseDir = Path.GetTempPath();
-        return Path.Combine(baseDir, "lux", "update-check.json");
+        return Path.Combine(baseDir, "nebra", "update-check.json");
     }
 
     private static UpdateCheckCache? ReadCache()

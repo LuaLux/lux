@@ -1,4 +1,4 @@
-﻿namespace Lux.Compiler.Passes;
+﻿namespace Nebra.Compiler.Passes;
 
 /// <summary>
 /// Defines the scope in which a pass is executed.

@@ -1,10 +1,10 @@
-﻿using Lux.Configuration.Converter;
+﻿using Nebra.Configuration.Converter;
 using Tomlyn.Serialization;
 
-namespace Lux.Configuration;
+namespace Nebra.Configuration;
 
 /// <summary>
-/// The supported Lua versions Lux can transpile to.
+/// The supported Lua versions Nebra can transpile to.
 /// </summary>
 [TomlConverter(typeof(LuaVersionConverter))]
 public enum LuaVersion

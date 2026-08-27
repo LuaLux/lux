@@ -1,9 +1,9 @@
-using Lux.Compiler.Annotations;
-using Lux.Configuration;
-using Lux.Diagnostics;
-using Lux.IR;
+using Nebra.Compiler.Annotations;
+using Nebra.Configuration;
+using Nebra.Diagnostics;
+using Nebra.IR;
 
-namespace Lux.Compiler.Passes;
+namespace Nebra.Compiler.Passes;
 
 /// <summary>
 /// The bind declare pass is responsible for binding the declarations in the source code. It takes care of declaring
@@ -765,7 +765,7 @@ public sealed class BindDeclarePass() : Pass(PassName, PassScope.PerFile)
     /// <summary>
     /// Binds an import specifier into <paramref name="scope"/>. If a same-named
     /// symbol already exists in the current scope (typically a class / interface
-    /// / enum from a <c>.d.lux</c> file that was loaded by
+    /// / enum from a <c>.d.neb</c> file that was loaded by
     /// <see cref="ResolveLibsPass"/>), the import is treated as an alias of that
     /// existing symbol — its <see cref="NameRef.Sym"/> is set to the existing
     /// <see cref="SymID"/>, and no new symbol is created. This lets
@@ -823,7 +823,7 @@ public sealed class BindDeclarePass() : Pass(PassName, PassScope.PerFile)
         {
             if (!seen.Add(tp.Name.Name))
             {
-                ctx.Diag.Report(tp.Span, Lux.Diagnostics.DiagnosticCode.ErrDuplicateTypeParam, tp.Name.Name);
+                ctx.Diag.Report(tp.Span, Nebra.Diagnostics.DiagnosticCode.ErrDuplicateTypeParam, tp.Name.Name);
                 continue;
             }
             DeclareSymbol(ctx, scope, tp.Name.Name, SymbolKind.TypeParam, tp.ID);

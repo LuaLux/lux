@@ -1,25 +1,25 @@
-# Installer for the lux CLI on Windows (PowerShell 5.1+).
+# Installer for the nebra CLI on Windows (PowerShell 5.1+).
 #
 # Detects the host architecture (x64 / arm64), downloads the matching release
-# archive from https://github.com/LuaLux/lux/releases/latest, extracts it to
-# %LOCALAPPDATA%\Lux, and appends that directory to the user PATH so `lux`
+# archive from https://github.com/nebra-lang/nebra/releases/latest, extracts it to
+# %LOCALAPPDATA%\Nebra, and appends that directory to the user PATH so `nebra`
 # works in every new shell. Honour these env vars / parameters to override:
-#   $env:LUX_INSTALL_DIR  - where to extract the archive (default %LOCALAPPDATA%\Lux)
-#   $env:LUX_VERSION      - install a specific tag        (default: latest)
+#   $env:NEBRA_INSTALL_DIR  - where to extract the archive (default %LOCALAPPDATA%\Nebra)
+#   $env:NEBRA_VERSION      - install a specific tag        (default: latest)
 #
-# Usage: irm https://raw.githubusercontent.com/LuaLux/lux/main/scripts/install.ps1 | iex
+# Usage: irm https://raw.githubusercontent.com/nebra-lang/nebra/master/scripts/install.ps1 | iex
 
 #Requires -Version 5.1
 [CmdletBinding()]
 param(
-    [string] $InstallDir = $(if ($env:LUX_INSTALL_DIR) { $env:LUX_INSTALL_DIR } else { Join-Path $env:LOCALAPPDATA "Lux" }),
-    [string] $Tag        = $(if ($env:LUX_VERSION) { $env:LUX_VERSION } else { "latest" })
+    [string] $InstallDir = $(if ($env:NEBRA_INSTALL_DIR) { $env:NEBRA_INSTALL_DIR } else { Join-Path $env:LOCALAPPDATA "Nebra" }),
+    [string] $Tag        = $(if ($env:NEBRA_VERSION) { $env:NEBRA_VERSION } else { "latest" })
 )
 
 $ErrorActionPreference = "Stop"
 $ProgressPreference    = "SilentlyContinue"   # speeds up Invoke-WebRequest significantly
 
-$repo = "LuaLux/lux"
+$repo = "nebra-lang/nebra"
 
 function Write-Info($msg) { Write-Host "==> $msg" -ForegroundColor Cyan }
 function Write-Err($msg)  { Write-Host "error: $msg" -ForegroundColor Red; exit 1 }
@@ -30,12 +30,12 @@ $arch = switch ($env:PROCESSOR_ARCHITECTURE) {
     default { Write-Err "Unsupported architecture: $($env:PROCESSOR_ARCHITECTURE)" }
 }
 
-$archive = "lux-win-$arch.zip"
+$archive = "nebra-win-$arch.zip"
 
 if ($Tag -eq "latest") {
     Write-Info "Resolving latest release tag..."
     try {
-        $headers = @{ "User-Agent" = "lux-installer"; "Accept" = "application/vnd.github+json" }
+        $headers = @{ "User-Agent" = "nebra-installer"; "Accept" = "application/vnd.github+json" }
         $release = Invoke-RestMethod -Uri "https://api.github.com/repos/$repo/releases/latest" -Headers $headers
         $Tag = $release.tag_name
     } catch {
@@ -47,7 +47,7 @@ if ($Tag -eq "latest") {
 $url = "https://github.com/$repo/releases/download/$Tag/$archive"
 Write-Info "Downloading $archive ($Tag)..."
 
-$tmp = New-Item -ItemType Directory -Path (Join-Path $env:TEMP "lux-install-$([System.Guid]::NewGuid().ToString('N'))") -Force
+$tmp = New-Item -ItemType Directory -Path (Join-Path $env:TEMP "nebra-install-$([System.Guid]::NewGuid().ToString('N'))") -Force
 try {
     $zipPath = Join-Path $tmp $archive
     try {
@@ -88,12 +88,12 @@ try {
         $newPath = if ($userPath) { "$userPath;$InstallDir" } else { $InstallDir }
         [Environment]::SetEnvironmentVariable("PATH", $newPath, "User")
         Write-Info "Added $InstallDir to user PATH."
-        Write-Info "Restart your shell (or VSCode / your IDE) for new sessions to see lux."
+        Write-Info "Restart your shell (or VSCode / your IDE) for new sessions to see nebra."
     } else {
         Write-Info "$InstallDir already on user PATH."
     }
 
-    # Make `lux` work in the current shell too, without forcing a restart.
+    # Make `nebra` work in the current shell too, without forcing a restart.
     if ($env:PATH -notlike "*$InstallDir*") {
         $env:PATH = "$env:PATH;$InstallDir"
     }
@@ -102,5 +102,5 @@ try {
 }
 
 Write-Host ""
-Write-Info "lux $Tag installed."
-Write-Info "Try: lux version"
+Write-Info "nebra $Tag installed."
+Write-Info "Try: nebra version"

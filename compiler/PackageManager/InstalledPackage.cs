@@ -1,9 +1,9 @@
-using Lux.Configuration;
+using Nebra.Configuration;
 
-namespace Lux.PackageManager;
+namespace Nebra.PackageManager;
 
 /// <summary>
-/// A package that has been materialized into <c>lux_modules/</c> of the current project.
+/// A package that has been materialized into <c>nebra_modules/</c> of the current project.
 /// Collected by <see cref="Discover"/> and consumed by compiler passes for auto-discovery
 /// of types, annotation plugins and module code.
 /// </summary>
@@ -28,12 +28,12 @@ public sealed record InstalledPackage(string Name, string RootPath, Config? Mani
 public static class InstalledPackages
 {
     public const string CacheKey = "installed_packages";
-    public const string ModulesDirName = "lux_modules";
+    public const string ModulesDirName = "nebra_modules";
 
     /// <summary>
-    /// Enumerates <c>lux_modules/</c> under <paramref name="projectDir"/> and returns one
+    /// Enumerates <c>nebra_modules/</c> under <paramref name="projectDir"/> and returns one
     /// <see cref="InstalledPackage"/> per direct child directory. Reads each package's
-    /// <c>lux.toml</c> when present; falls back to the directory name as the package name.
+    /// <c>nebra.toml</c> when present; falls back to the directory name as the package name.
     /// </summary>
     public static List<InstalledPackage> Discover(string projectDir)
     {
@@ -46,7 +46,7 @@ public static class InstalledPackages
             var dirName = Path.GetFileName(entry);
             if (string.IsNullOrEmpty(dirName) || dirName.StartsWith('.')) continue;
 
-            var manifestPath = Path.Combine(entry, "lux.toml");
+            var manifestPath = Path.Combine(entry, "nebra.toml");
             Config? manifest = null;
             if (File.Exists(manifestPath))
             {

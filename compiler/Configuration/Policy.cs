@@ -1,7 +1,7 @@
-﻿using Lux.Configuration.Converter;
+﻿using Nebra.Configuration.Converter;
 using Tomlyn.Serialization;
 
-namespace Lux.Configuration;
+namespace Nebra.Configuration;
 
 /// <summary>
 /// The policy for a specific configuration option. This is used to determine how user can do or not do specific things.

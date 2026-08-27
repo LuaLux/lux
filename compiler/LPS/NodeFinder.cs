@@ -1,7 +1,7 @@
-using Lux.Diagnostics;
-using Lux.IR;
+using Nebra.Diagnostics;
+using Nebra.IR;
 
-namespace Lux.LPS;
+namespace Nebra.LPS;
 
 public static class NodeFinder
 {

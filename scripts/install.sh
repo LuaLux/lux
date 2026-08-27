@@ -1,22 +1,22 @@
 #!/usr/bin/env bash
-# Installer for the lux CLI on Linux and macOS.
+# Installer for the nebra CLI on Linux and macOS.
 #
 # Detects the host OS + architecture, downloads the matching release archive
-# from https://github.com/LuaLux/lux/releases/latest, extracts it to
-# ~/.lux, and symlinks the binary into ~/.local/bin so `lux` works in any
+# from https://github.com/nebra-lang/nebra/releases/latest, extracts it to
+# ~/.nebra, and symlinks the binary into ~/.local/bin so `nebra` works in any
 # new shell. Honour these env vars to override:
-#   LUX_INSTALL_DIR  - where to extract the archive (default ~/.lux)
-#   LUX_BIN_DIR      - where the `lux` symlink goes  (default ~/.local/bin)
-#   LUX_VERSION      - install a specific tag       (default: latest)
+#   NEBRA_INSTALL_DIR  - where to extract the archive (default ~/.nebra)
+#   NEBRA_BIN_DIR      - where the `nebra` symlink goes  (default ~/.local/bin)
+#   NEBRA_VERSION      - install a specific tag       (default: latest)
 #
-# Usage: curl -fsSL https://raw.githubusercontent.com/LuaLux/lux/main/scripts/install.sh | bash
+# Usage: curl -fsSL https://raw.githubusercontent.com/nebra-lang/nebra/master/scripts/install.sh | bash
 
 set -euo pipefail
 
-REPO="LuaLux/lux"
-INSTALL_DIR="${LUX_INSTALL_DIR:-$HOME/.lux}"
-BIN_DIR="${LUX_BIN_DIR:-$HOME/.local/bin}"
-TAG="${LUX_VERSION:-latest}"
+REPO="nebra-lang/nebra"
+INSTALL_DIR="${NEBRA_INSTALL_DIR:-$HOME/.nebra}"
+BIN_DIR="${NEBRA_BIN_DIR:-$HOME/.local/bin}"
+TAG="${NEBRA_VERSION:-latest}"
 
 err() { printf '\033[31merror:\033[0m %s\n' "$*" >&2; exit 1; }
 info() { printf '\033[36m==>\033[0m %s\n' "$*"; }
@@ -36,7 +36,7 @@ case "$(uname -m)" in
     *) err "Unsupported architecture: $(uname -m)." ;;
 esac
 
-archive="lux-${os_tag}-${arch_tag}.tar.gz"
+archive="nebra-${os_tag}-${arch_tag}.tar.gz"
 
 if [ "$TAG" = "latest" ]; then
     info "Resolving latest release tag..."
@@ -70,11 +70,12 @@ fi
 info "Extracting to ${INSTALL_DIR}..."
 mkdir -p "$INSTALL_DIR"
 tar -xzf "${tmp}/${archive}" -C "$INSTALL_DIR"
-chmod +x "${INSTALL_DIR}/lux"
+chmod +x "${INSTALL_DIR}/nebra"
 
-info "Linking ${BIN_DIR}/lux -> ${INSTALL_DIR}/lux"
+info "Linking ${BIN_DIR}/nebra and ${BIN_DIR}/neb -> ${INSTALL_DIR}/nebra"
 mkdir -p "$BIN_DIR"
-ln -sf "${INSTALL_DIR}/lux" "${BIN_DIR}/lux"
+ln -sf "${INSTALL_DIR}/nebra" "${BIN_DIR}/nebra"
+ln -sf "${INSTALL_DIR}/nebra" "${BIN_DIR}/neb"
 
 # Add BIN_DIR to PATH in the user's shell rc if it isn't already exported.
 case ":${PATH}:" in
@@ -90,10 +91,10 @@ case ":${PATH}:" in
         if [ -n "$rc" ] && ! grep -qsF "$BIN_DIR" "$rc" 2>/dev/null; then
             {
                 echo ""
-                echo "# Added by lux installer"
+                echo "# Added by nebra installer"
                 echo "export PATH=\"\$PATH:$BIN_DIR\""
             } >> "$rc"
-            info "Added $BIN_DIR to PATH via $rc — restart your shell or run: source $rc"
+            info "Added $BIN_DIR to PATH via $rc - restart your shell or run: source $rc"
         elif [ -z "$rc" ]; then
             info "Add $BIN_DIR to your PATH manually for your shell."
         fi
@@ -101,5 +102,5 @@ case ":${PATH}:" in
 esac
 
 echo
-info "lux ${TAG} installed."
-info "Try: lux version"
+info "nebra ${TAG} installed."
+info "Try: nebra version"

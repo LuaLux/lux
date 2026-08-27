@@ -1,9 +1,9 @@
 using System.Reflection;
 using Antlr4.Runtime;
-using Lux.IR;
-using Lux.PackageManager;
+using Nebra.IR;
+using Nebra.PackageManager;
 
-namespace Lux.Compiler.Passes;
+namespace Nebra.Compiler.Passes;
 
 public sealed class ResolveLibsPass() : Pass(PassName, PassScope.PerBuild)
 {
@@ -11,10 +11,10 @@ public sealed class ResolveLibsPass() : Pass(PassName, PassScope.PerBuild)
 
     /// <summary>
     /// Logical filename used by the embedded stdlib so disable lookups can
-    /// distinguish <c>std.d.lux</c> entries (subject to user toggles) from
-    /// runtime-only declaration files such as <c>http.d.lux</c>.
+    /// distinguish <c>std.d.neb</c> entries (subject to user toggles) from
+    /// runtime-only declaration files such as <c>http.d.neb</c>.
     /// </summary>
-    private const string StdLogicalName = "std.d.lux";
+    private const string StdLogicalName = "std.d.neb";
 
     public override bool Run(PassContext context)
     {
@@ -36,10 +36,10 @@ public sealed class ResolveLibsPass() : Pass(PassName, PassScope.PerBuild)
 
             if (Directory.Exists(fullPath))
             {
-                foreach (var file in Directory.GetFiles(fullPath, "*.d.lux", SearchOption.AllDirectories))
+                foreach (var file in Directory.GetFiles(fullPath, "*.d.neb", SearchOption.AllDirectories))
                     LoadDeclFile(context, file);
             }
-            else if (File.Exists(fullPath) && fullPath.EndsWith(".d.lux", StringComparison.OrdinalIgnoreCase))
+            else if (File.Exists(fullPath) && fullPath.EndsWith(".d.neb", StringComparison.OrdinalIgnoreCase))
             {
                 LoadDeclFile(context, fullPath);
             }
@@ -48,17 +48,17 @@ public sealed class ResolveLibsPass() : Pass(PassName, PassScope.PerBuild)
         foreach (var pkg in GetInstalledPackages(context))
         {
             if (!Directory.Exists(pkg.RootPath)) continue;
-            foreach (var file in Directory.EnumerateFiles(pkg.RootPath, "*.d.lux", SearchOption.AllDirectories))
+            foreach (var file in Directory.EnumerateFiles(pkg.RootPath, "*.d.neb", SearchOption.AllDirectories))
                 LoadDeclFile(context, file);
         }
     }
 
     /// <summary>
-    /// Loads the runtime's built-in .d.lux declarations that are embedded in the
-    /// compiler assembly (see Lux.csproj). Each resource is materialised with a
-    /// pseudo path like "&lt;stdlib&gt;/http.d.lux" so diagnostics remain readable.
-    /// The base Lua type definitions in <c>std.d.lux</c> can be partially or
-    /// fully suppressed via the <c>[stdlib]</c> section of <c>lux.toml</c>.
+    /// Loads the runtime's built-in .d.neb declarations that are embedded in the
+    /// compiler assembly (see Nebra.csproj). Each resource is materialised with a
+    /// pseudo path like "&lt;stdlib&gt;/http.d.neb" so diagnostics remain readable.
+    /// The base Lua type definitions in <c>std.d.neb</c> can be partially or
+    /// fully suppressed via the <c>[stdlib]</c> section of <c>nebra.toml</c>.
     /// </summary>
     private static void LoadEmbeddedStdlibDeclarations(PassContext context)
     {
@@ -70,7 +70,7 @@ public sealed class ResolveLibsPass() : Pass(PassName, PassScope.PerBuild)
         var asm = typeof(ResolveLibsPass).Assembly;
         foreach (var name in asm.GetManifestResourceNames())
         {
-            if (!name.EndsWith(".d.lux", StringComparison.OrdinalIgnoreCase)) continue;
+            if (!name.EndsWith(".d.neb", StringComparison.OrdinalIgnoreCase)) continue;
 
             var logicalName = ExtractLogicalName(name);
             var isStd = string.Equals(logicalName, StdLogicalName, StringComparison.OrdinalIgnoreCase);
@@ -95,12 +95,12 @@ public sealed class ResolveLibsPass() : Pass(PassName, PassScope.PerBuild)
 
     private static string ExtractLogicalName(string resourceName)
     {
-        var lastDot = resourceName.LastIndexOf(".d.lux", StringComparison.OrdinalIgnoreCase);
+        var lastDot = resourceName.LastIndexOf(".d.neb", StringComparison.OrdinalIgnoreCase);
         if (lastDot < 0) return resourceName;
         var prefix = resourceName[..lastDot];
         var slash = prefix.LastIndexOf('.');
         var baseName = slash >= 0 ? prefix[(slash + 1)..] : prefix;
-        return baseName + ".d.lux";
+        return baseName + ".d.neb";
     }
 
     private static IReadOnlyList<InstalledPackage> GetInstalledPackages(PassContext context)
@@ -143,10 +143,10 @@ public sealed class ResolveLibsPass() : Pass(PassName, PassScope.PerBuild)
         foreach (var pkg in pkgsMissingFile)
         {
             var inputStream = new AntlrInputStream(source);
-            var lexer = new LuxLexer(inputStream);
+            var lexer = new NebraLexer(inputStream);
             lexer.RemoveErrorListeners();
             var tokenStream = new CommonTokenStream(lexer);
-            var parser = new LuxParser(tokenStream);
+            var parser = new NebraParser(tokenStream);
             parser.RemoveErrorListeners();
             var visitor = new IRVisitor(filePath, context.NodeAlloc, diag, context.Config);
             var ir = visitor.Visit(parser.script());

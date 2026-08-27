@@ -1,6 +1,6 @@
 using System.Text;
 
-namespace Lux.Doc;
+namespace Nebra.Doc;
 
 /// <summary>
 /// Renders a <see cref="DocSite"/> into a tree of Markdown files: an
@@ -86,7 +86,7 @@ public sealed class MarkdownDocRenderer
                 sb.AppendLine();
                 sb.Append("### `").Append(symbol.Name).AppendLine("`");
                 sb.AppendLine();
-                sb.AppendLine("```lux");
+                sb.AppendLine("```nebra");
                 sb.AppendLine(symbol.Signature);
                 sb.AppendLine("```");
 
@@ -128,7 +128,7 @@ public sealed class MarkdownDocRenderer
                     sb.Append("_").Append(string.Join(" ", mods)).AppendLine("_");
                 }
                 sb.AppendLine();
-                sb.AppendLine("```lux");
+                sb.AppendLine("```nebra");
                 sb.AppendLine(member.Signature);
                 sb.AppendLine("```");
                 if (member.Doc != null)

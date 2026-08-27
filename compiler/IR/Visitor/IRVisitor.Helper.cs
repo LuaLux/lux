@@ -1,8 +1,8 @@
 using Antlr4.Runtime;
 using Antlr4.Runtime.Tree;
-using Lux.Diagnostics;
+using Nebra.Diagnostics;
 
-namespace Lux.IR;
+namespace Nebra.IR;
 
 internal partial class IRVisitor
 {
@@ -120,7 +120,7 @@ internal partial class IRVisitor
         return start < end ? s[start..end] : string.Empty;
     }
 
-    private string ParseStringValue(LuxParser.StrContext? ctx)
+    private string ParseStringValue(NebraParser.StrContext? ctx)
     {
         // ctx can be null when ANTLR error-recovery synthesizes a parse tree for
         // malformed input (e.g. `import { a, b }` without the trailing `from "..."`).
@@ -129,33 +129,33 @@ internal partial class IRVisitor
         if (ctx == null) return string.Empty;
         return ctx switch
         {
-            LuxParser.DoubleQuotedStrContext => StripQuotes(ctx.GetText()),
-            LuxParser.SingleQuotedStrContext => StripQuotes(ctx.GetText()),
-            LuxParser.LongStrContext => StripLongBrackets(ctx.GetText()),
+            NebraParser.DoubleQuotedStrContext => StripQuotes(ctx.GetText()),
+            NebraParser.SingleQuotedStrContext => StripQuotes(ctx.GetText()),
+            NebraParser.LongStrContext => StripLongBrackets(ctx.GetText()),
             _ => ctx.GetText()
         };
     }
 
-    private (string, TextSpan) ParseStringValueWithSpan(LuxParser.StrContext? ctx)
+    private (string, TextSpan) ParseStringValueWithSpan(NebraParser.StrContext? ctx)
     {
         var value = ParseStringValue(ctx);
         var span = ctx != null ? SpanFromCtx(ctx) : TextSpan.Empty;
         return (value, span);
     }
 
-    private NameRef NameRefFromString(LuxParser.StrContext? ctx)
+    private NameRef NameRefFromString(NebraParser.StrContext? ctx)
     {
         var (value, span) = ParseStringValueWithSpan(ctx);
         return new NameRef(value, span);
     }
     
-    private TypeRef? VisitTypeAnnotationOpt(LuxParser.TypeAnnotationContext? ctx)
+    private TypeRef? VisitTypeAnnotationOpt(NebraParser.TypeAnnotationContext? ctx)
     {
         if (ctx == null) return null;
         return (TypeRef)Visit(ctx.typeExpr());
     }
 
-    private (List<Stmt> body, ReturnStmt? ret) VisitBlockContent(LuxParser.BlockContext ctx)
+    private (List<Stmt> body, ReturnStmt? ret) VisitBlockContent(NebraParser.BlockContext ctx)
     {
         var stmts = new List<Stmt>();
         if (ctx == null) return (stmts, null);
@@ -176,7 +176,7 @@ internal partial class IRVisitor
     }
 
     private (List<Parameter> parameters, TypeRef? returnType, List<Stmt> body, ReturnStmt? ret) VisitFuncBodyContent(
-        LuxParser.FuncBodyContext ctx)
+        NebraParser.FuncBodyContext ctx)
     {
         var parameters = VisitParamListContent(ctx.paramList());
         var returnType = VisitFuncReturnOpt(ctx.funcReturn());
@@ -185,7 +185,7 @@ internal partial class IRVisitor
     }
 
     private (List<Parameter> parameters, TypeRef? returnType) VisitFuncSignatureContent(
-        LuxParser.FuncSignatureContext ctx)
+        NebraParser.FuncSignatureContext ctx)
     {
         var parameters = VisitParamListContent(ctx.paramList());
         var returnType = VisitFuncReturnOpt(ctx.funcReturn());
@@ -196,29 +196,29 @@ internal partial class IRVisitor
     /// A function return is either a plain type or a type predicate <c>param is Type</c>
     /// (produces a <see cref="TypePredicateRef"/>).
     /// </summary>
-    private TypeRef? VisitFuncReturnOpt(LuxParser.FuncReturnContext? ctx)
+    private TypeRef? VisitFuncReturnOpt(NebraParser.FuncReturnContext? ctx)
     {
         switch (ctx)
         {
             case null:
                 return null;
-            case LuxParser.PredicateReturnContext pr:
+            case NebraParser.PredicateReturnContext pr:
                 return new TypePredicateRef(NewNodeID, SpanFromCtx(pr),
                     NameRefFromTerm(pr.NAME()), (TypeRef)Visit(pr.typeExpr()));
-            case LuxParser.PlainReturnContext pl:
+            case NebraParser.PlainReturnContext pl:
                 return (TypeRef)Visit(pl.typeExpr());
             default:
                 return null;
         }
     }
 
-    private List<Parameter> VisitParamListContent(LuxParser.ParamListContext? ctx)
+    private List<Parameter> VisitParamListContent(NebraParser.ParamListContext? ctx)
     {
         if (ctx == null) return [];
 
         switch (ctx)
         {
-            case LuxParser.ParamListWithNamesContext withNames:
+            case NebraParser.ParamListWithNamesContext withNames:
             {
                 var result = withNames.param().Select(p =>
                 {
@@ -243,7 +243,7 @@ internal partial class IRVisitor
 
                 return result;
             }
-            case LuxParser.ParamListVarargContext vararg:
+            case NebraParser.ParamListVarargContext vararg:
             {
                 var vp = vararg.varargParam();
                 var span = SpanFromCtx(vp);
@@ -255,7 +255,7 @@ internal partial class IRVisitor
         }
     }
 
-    private (List<NameRef> namePath, NameRef? methodName) VisitFuncNameContent(LuxParser.FuncNameContext ctx)
+    private (List<NameRef> namePath, NameRef? methodName) VisitFuncNameContent(NebraParser.FuncNameContext ctx)
     {
         var allNames = ctx.NAME().Select(NameRefFromTerm).ToList();
         NameRef? methodName = null;
@@ -268,7 +268,7 @@ internal partial class IRVisitor
         return (allNames, methodName);
     }
 
-    private List<AttribVar> VisitAttribNameListContent(LuxParser.AttribNameListContext ctx)
+    private List<AttribVar> VisitAttribNameListContent(NebraParser.AttribNameListContext ctx)
     {
         return ctx.attribName().Select(a => new AttribVar(
             NameRefFromTerm(a.NAME()),
@@ -282,7 +282,7 @@ internal partial class IRVisitor
     /// Visits an <c>annotationList</c> grammar node and produces a list of <see cref="Annotation"/>
     /// IR nodes. Returns an empty list if the context is null or contains no annotations.
     /// </summary>
-    private List<Annotation> VisitAnnotationListContent(LuxParser.AnnotationListContext? ctx)
+    private List<Annotation> VisitAnnotationListContent(NebraParser.AnnotationListContext? ctx)
     {
         if (ctx == null) return [];
         var result = new List<Annotation>();
@@ -297,13 +297,13 @@ internal partial class IRVisitor
                 {
                     switch (argCtx)
                     {
-                        case LuxParser.NamedAnnotationArgContext named:
+                        case NebraParser.NamedAnnotationArgContext named:
                             args.Add(new AnnotationArg(
                                 named.NAME().GetText(),
                                 (Expr)Visit(named.expr()),
                                 SpanFromCtx(named)));
                             break;
-                        case LuxParser.PositionalAnnotationArgContext positional:
+                        case NebraParser.PositionalAnnotationArgContext positional:
                             args.Add(new AnnotationArg(
                                 null,
                                 (Expr)Visit(positional.expr()),
@@ -317,21 +317,21 @@ internal partial class IRVisitor
         return result;
     }
 
-    private List<Expr> VisitArgsContent(LuxParser.ArgsContext ctx)
+    private List<Expr> VisitArgsContent(NebraParser.ArgsContext ctx)
     {
         return ctx switch
         {
-            LuxParser.ParenArgsContext paren =>
+            NebraParser.ParenArgsContext paren =>
                 paren.exprList()?.expr().Select(e => (Expr)Visit(e)).ToList() ?? [],
-            LuxParser.TableArgsContext table =>
+            NebraParser.TableArgsContext table =>
                 [(Expr)Visit(table.tableConstructor())],
-            LuxParser.StringArgsContext str =>
+            NebraParser.StringArgsContext str =>
                 [(Expr)Visit(str.str())],
             _ => []
         };
     }
 
-    private Expr BuildSuffixChain(LuxParser.VarOrExpContext varOrExp, LuxParser.SuffixContext[] suffixes)
+    private Expr BuildSuffixChain(NebraParser.VarOrExpContext varOrExp, NebraParser.SuffixContext[] suffixes)
     {
         var result = (Expr)Visit(varOrExp);
         foreach (var suffix in suffixes)
@@ -339,23 +339,23 @@ internal partial class IRVisitor
         return result;
     }
 
-    private Expr WrapWithSuffix(Expr obj, LuxParser.SuffixContext suffix)
+    private Expr WrapWithSuffix(Expr obj, NebraParser.SuffixContext suffix)
     {
         TextSpan Span(ParserRuleContext ctx) => TextSpan.Combine(obj.Span, SpanFromCtx(ctx));
 
         return suffix switch
         {
-            LuxParser.DotSuffixContext dot =>
+            NebraParser.DotSuffixContext dot =>
                 new DotAccessExpr(NewNodeID, Span(dot), obj, NameRefFromTerm(dot.NAME())),
-            LuxParser.OptDotSuffixContext odot =>
+            NebraParser.OptDotSuffixContext odot =>
                 new DotAccessExpr(NewNodeID, Span(odot), obj, NameRefFromTerm(odot.NAME()), isOptional: true),
-            LuxParser.IndexSuffixContext idx =>
+            NebraParser.IndexSuffixContext idx =>
                 new IndexAccessExpr(NewNodeID, Span(idx), obj, (Expr)Visit(idx.expr())),
-            LuxParser.MethodCallSuffixContext mc =>
+            NebraParser.MethodCallSuffixContext mc =>
                 new MethodCallExpr(NewNodeID, Span(mc), obj, NameRefFromTerm(mc.NAME()), VisitArgsContent(mc.args())),
-            LuxParser.CallSuffixContext call =>
+            NebraParser.CallSuffixContext call =>
                 new FunctionCallExpr(NewNodeID, Span(call), obj, VisitArgsContent(call.args())),
-            LuxParser.OptCallSuffixContext optCall =>
+            NebraParser.OptCallSuffixContext optCall =>
                 new FunctionCallExpr(NewNodeID, Span(optCall), obj, VisitArgsContent(optCall.args()), isOptional: true),
             _ => throw new InvalidOperationException($"Unknown suffix type: {suffix.GetType().Name}")
         };
@@ -372,7 +372,7 @@ internal partial class IRVisitor
     }
 
     /// <summary>
-    /// Maps a Lux operator symbol (written after the <c>operator</c> keyword in a class)
+    /// Maps a Nebra operator symbol (written after the <c>operator</c> keyword in a class)
     /// to its corresponding Lua metamethod name. Arity is used to disambiguate
     /// <c>-</c> (binary <c>__sub</c> vs. unary <c>__unm</c>).
     /// </summary>
@@ -406,7 +406,7 @@ internal partial class IRVisitor
     /// Visits a <c>typeParamList</c> grammar node and produces a list of <see cref="TypeParamDef"/> IR nodes.
     /// Returns an empty list if the context is null.
     /// </summary>
-    private List<TypeParamDef> VisitTypeParamListContent(LuxParser.TypeParamListContext? ctx)
+    private List<TypeParamDef> VisitTypeParamListContent(NebraParser.TypeParamListContext? ctx)
     {
         if (ctx == null) return [];
         var result = new List<TypeParamDef>();
@@ -436,7 +436,7 @@ internal partial class IRVisitor
     /// Visits a <c>typeArgList</c> grammar node and produces a list of <see cref="TypeArgRef"/> IR nodes.
     /// Returns an empty list if the context is null.
     /// </summary>
-    private List<TypeArgRef> VisitTypeArgListContent(LuxParser.TypeArgListContext? ctx)
+    private List<TypeArgRef> VisitTypeArgListContent(NebraParser.TypeArgListContext? ctx)
     {
         if (ctx == null) return [];
         var result = new List<TypeArgRef>();
@@ -444,10 +444,10 @@ internal partial class IRVisitor
         {
             switch (arg)
             {
-                case LuxParser.ConcreteTypeArgContext cta:
+                case NebraParser.ConcreteTypeArgContext cta:
                     result.Add(new ConcreteTypeArgRef(NewNodeID, SpanFromCtx(cta), (TypeRef)Visit(cta.typeExpr())));
                     break;
-                case LuxParser.WildcardTypeArgContext wta:
+                case NebraParser.WildcardTypeArgContext wta:
                 {
                     var kind = WildcardKind.Unbounded;
                     TypeRef? bound = null;
@@ -473,7 +473,7 @@ internal partial class IRVisitor
     /// Extracts the head <see cref="NameRef"/> from a <c>classRef</c> grammar node and returns the
     /// accompanying type arguments (empty list if none).
     /// </summary>
-    private (NameRef name, List<TypeArgRef> typeArgs) VisitClassRefContent(LuxParser.ClassRefContext ctx)
+    private (NameRef name, List<TypeArgRef> typeArgs) VisitClassRefContent(NebraParser.ClassRefContext ctx)
     {
         var name = NameRefFromTerm(ctx.NAME());
         var typeArgs = VisitTypeArgListContent(ctx.typeArgList());

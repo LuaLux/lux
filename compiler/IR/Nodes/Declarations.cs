@@ -1,6 +1,6 @@
-using Lux.Diagnostics;
+using Nebra.Diagnostics;
 
-namespace Lux.IR;
+namespace Nebra.IR;
 
 public sealed class FunctionDecl(
     NodeID id, TextSpan span,
@@ -105,7 +105,7 @@ public sealed class EnumMember(NameRef name, Expr? value, TypeRef? typeAnnotatio
     public TypeRef? TypeAnnotation { get; } = typeAnnotation;
     public TextSpan Span { get; } = span;
     public List<Annotation> Annotations { get; set; } = [];
-    public Lux.Doc.DocComment? Doc { get; set; }
+    public Nebra.Doc.DocComment? Doc { get; set; }
 }
 
 public sealed class ClassDecl(

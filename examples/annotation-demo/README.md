@@ -1,7 +1,7 @@
 # annotation-demo
 
-Minimal showcase of Lux's compile-time annotation system. The `@log`
-annotation defined in `annotations/log.lux` prepends a `print("[log] …")`
+Minimal showcase of Nebra's compile-time annotation system. The `@log`
+annotation defined in `annotations/log.neb` prepends a `print("[log] …")`
 statement to the body of every function it decorates, so the generated Lua
 behaves as if the call had been written by hand.
 
@@ -9,14 +9,14 @@ behaves as if the call had been written by hand.
 
 ```
 annotation-demo/
-├── lux.toml              # project config; registers ./annotations/
+├── nebra.toml              # project config; registers ./annotations/
 ├── annotations/
-│   └── log.lux           # @log definition (meta + apply hook)
+│   └── log.neb           # @log definition (meta + apply hook)
 └── src/
-    └── main.lux          # uses @log on three functions
+    └── main.neb          # uses @log on three functions
 ```
 
-The relevant bit of `lux.toml`:
+The relevant bit of `nebra.toml`:
 
 ```toml
 annotations = ["annotations"]
@@ -26,15 +26,15 @@ index_base = 1
 ```
 
 `annotations = […]` tells the compiler which directories to scan for
-annotation definitions. Every `.lux` file in there that exports
+annotation definitions. Every `.neb` file in there that exports
 `annotation = { … }` and an `apply` function becomes available as `@name`
-project-wide. `index_base = 1` aligns Lux array indexing with Lua's
+project-wide. `index_base = 1` aligns Nebra array indexing with Lua's
 native 1-based indexing so the `apply` hook can write `target.namePath[1]`
 without surprises (the IR helpers run inside a stock Lua sandbox).
 
 ## How `@log` works
 
-`annotations/log.lux` declares the annotation metadata and the transform:
+`annotations/log.neb` declares the annotation metadata and the transform:
 
 ```lua
 export local annotation = {
@@ -72,7 +72,7 @@ function had always looked that way.
 
 ```sh
 cd examples/annotation-demo
-lux build
+nebra build
 lua out/main.lua
 ```
 
@@ -80,7 +80,7 @@ Expected output:
 
 ```
 [log] greet
-Hello, Lux!
+Hello, Nebra!
 [log] computing sum
 2 + 3 =	5
 [log] stringifying number

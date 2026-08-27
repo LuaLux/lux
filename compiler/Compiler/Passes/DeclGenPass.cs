@@ -1,8 +1,8 @@
 using System.Text;
-using Lux.IR;
-using Type = Lux.IR.Type;
+using Nebra.IR;
+using Type = Nebra.IR.Type;
 
-namespace Lux.Compiler.Passes;
+namespace Nebra.Compiler.Passes;
 
 public sealed class DeclGenPass() : Pass(PassName, PassScope.PerBuild, true)
 {
@@ -139,11 +139,11 @@ public sealed class DeclGenPass() : Pass(PassName, PassScope.PerBuild, true)
 
     /// <summary>
     /// Re-serialises a parsed <see cref="Doc.DocComment"/> back into LuaCATS
-    /// <c>---</c> lines so generated <c>.d.lux</c> declaration files preserve
+    /// <c>---</c> lines so generated <c>.d.neb</c> declaration files preserve
     /// the documentation alongside the types. Called before every emitted
     /// declaration; a no-op when <paramref name="doc"/> is null/empty.
     /// </summary>
-    private static void EmitDoc(StringBuilder sb, string indent, Lux.Doc.DocComment? doc)
+    private static void EmitDoc(StringBuilder sb, string indent, Nebra.Doc.DocComment? doc)
     {
         if (doc == null || doc.IsEmpty) return;
 
@@ -205,7 +205,7 @@ public sealed class DeclGenPass() : Pass(PassName, PassScope.PerBuild, true)
             if (!string.IsNullOrEmpty(doc.DeprecatedReason)) sb.Append(' ').Append(doc.DeprecatedReason);
             sb.AppendLine();
         }
-        if (doc.Visibility != Lux.Doc.DocVisibility.Default)
+        if (doc.Visibility != Nebra.Doc.DocVisibility.Default)
             sb.Append(indent).Append("---@").AppendLine(doc.Visibility.ToString().ToLowerInvariant());
     }
 

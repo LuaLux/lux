@@ -1,6 +1,6 @@
 name: Release
 
-# Triggered when a tag of the form v*.*.* is pushed. Builds the lux CLI as a
+# Triggered when a tag of the form v*.*.* is pushed. Builds the nebra CLI as a
 # single self-contained binary for every supported platform/arch, packages the
 # result + LICENSE + README into a per-platform archive, and uploads everything
 # to the GitHub Release matching the tag.
@@ -67,17 +67,17 @@ jobs:
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
 
       - name: Restore solution
-        run: dotnet restore Lux.sln
+        run: dotnet restore Nebra.sln
 
-      - name: Publish lux CLI (${{ matrix.rid }})
+      - name: Publish nebra CLI (${{ matrix.rid }})
         shell: bash
         run: |
           # SingleFile + IncludeAllContentForSelfExtract: produces one apphost
           # that self-extracts every assembly and native library to disk on
-          # first launch. Needed so `lux compile` can locate Lux.Runtime.dll
+          # first launch. Needed so `nebra compile` can locate Nebra.Runtime.dll
           # via AppContext.BaseDirectory (Assembly.Location is empty for
           # embedded single-file assemblies).
-          dotnet publish compiler/Lux.csproj \
+          dotnet publish compiler/Nebra.csproj \
             -c Release \
             -r ${{ matrix.rid }} \
             --self-contained true \
@@ -98,29 +98,26 @@ jobs:
           STAGE="stage/${{ matrix.rid }}"
           mkdir -p "$STAGE"
 
-          # Pick the executable name based on the target platform. Windows
-          # publish drops Lux.exe; everything else produces a bare Lux binary
-          # (we rename to lowercase `lux` for nicer UX).
+          # AssemblyName is `nebra`, so publish emits `nebra` / `nebra.exe`
+          # directly. Windows has no symlinks without privileges, so the short
+          # `neb` alias ships as a second copy; the Unix installers symlink it.
           if [[ "${{ matrix.rid }}" == win-* ]]; then
-            cp "publish/${{ matrix.rid }}/Lux.exe" "$STAGE/lux.exe"
+            cp "publish/${{ matrix.rid }}/nebra.exe" "$STAGE/nebra.exe"
+            cp "publish/${{ matrix.rid }}/nebra.exe" "$STAGE/neb.exe"
           else
-            cp "publish/${{ matrix.rid }}/Lux" "$STAGE/lux"
-            chmod +x "$STAGE/lux"
+            cp "publish/${{ matrix.rid }}/nebra" "$STAGE/nebra"
+            chmod +x "$STAGE/nebra"
           fi
 
           cp LICENSE "$STAGE/"
           cp README.md "$STAGE/"
-
-          # Ship the docs alongside so offline users have the full language
-          # reference packaged with the binary.
-          cp -R docs "$STAGE/docs"
 
       - name: Package (tar.gz)
         if: matrix.archive == 'tar'
         shell: bash
         run: |
           set -euo pipefail
-          ARCHIVE="lux-${{ matrix.rid }}.tar.gz"
+          ARCHIVE="nebra-${{ matrix.rid }}.tar.gz"
           tar -C stage/${{ matrix.rid }} -czf "$ARCHIVE" .
           shasum -a 256 "$ARCHIVE" > "$ARCHIVE.sha256"
 
@@ -128,7 +125,7 @@ jobs:
         if: matrix.archive == 'zip'
         shell: pwsh
         run: |
-          $archive = "lux-${{ matrix.rid }}.zip"
+          $archive = "nebra-${{ matrix.rid }}.zip"
           Compress-Archive -Path "stage/${{ matrix.rid }}/*" -DestinationPath $archive -Force
           $hash = (Get-FileHash $archive -Algorithm SHA256).Hash.ToLower()
           "$hash  $archive" | Out-File -FilePath "$archive.sha256" -Encoding ASCII
@@ -136,12 +133,12 @@ jobs:
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: lux-${{ matrix.rid }}
+          name: nebra-${{ matrix.rid }}
           path: |
-            lux-${{ matrix.rid }}.tar.gz
-            lux-${{ matrix.rid }}.zip
-            lux-${{ matrix.rid }}.tar.gz.sha256
-            lux-${{ matrix.rid }}.zip.sha256
+            nebra-${{ matrix.rid }}.tar.gz
+            nebra-${{ matrix.rid }}.zip
+            nebra-${{ matrix.rid }}.tar.gz.sha256
+            nebra-${{ matrix.rid }}.zip.sha256
           if-no-files-found: ignore
           retention-days: 14
 
@@ -161,7 +158,7 @@ jobs:
         with:
           node-version: '20'
           cache: 'npm'
-          cache-dependency-path: vscode-lux/package-lock.json
+          cache-dependency-path: vscode-nebra/package-lock.json
 
       - name: Resolve version + prerelease flag
         id: meta
@@ -179,7 +176,7 @@ jobs:
           else
             PRERELEASE="false"
           fi
-          VSIX="lux-lang-${VERSION}.vsix"
+          VSIX="nebra-${VERSION}.vsix"
           echo "tag=$TAG"               >> "$GITHUB_OUTPUT"
           echo "version=$VERSION"       >> "$GITHUB_OUTPUT"
           echo "prerelease=$PRERELEASE" >> "$GITHUB_OUTPUT"
@@ -189,20 +186,20 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          cp LICENSE vscode-lux/LICENSE
-          cp README.md vscode-lux/README.md
-          cp assets/banner.png vscode-lux/icon.png
+          cp LICENSE vscode-nebra/LICENSE
+          cp README.md vscode-nebra/README.md
+          cp assets/logo.png vscode-nebra/icon.png
 
       - name: Install extension deps
-        working-directory: vscode-lux
+        working-directory: vscode-nebra
         run: npm ci
 
       - name: Sync package.json version to tag
-        working-directory: vscode-lux
+        working-directory: vscode-nebra
         run: npm version "${{ steps.meta.outputs.version }}" --no-git-tag-version --allow-same-version
 
       - name: Package VSIX
-        working-directory: vscode-lux
+        working-directory: vscode-nebra
         shell: bash
         run: |
           set -euo pipefail
@@ -219,7 +216,7 @@ jobs:
       - name: Upload VSIX artifact
         uses: actions/upload-artifact@v4
         with:
-          name: lux-vsix
+          name: nebra-vsix
           path: |
             ${{ steps.meta.outputs.vsix }}
             ${{ steps.meta.outputs.vsix }}.sha256
@@ -263,21 +260,23 @@ jobs:
         shell: bash
         run: |
           {
-            echo "## Lux ${{ steps.tag.outputs.name }}"
+            echo "## Nebra ${{ steps.tag.outputs.name }}"
             echo ""
             echo "Self-contained binary builds for every supported platform."
-            echo "Each archive contains the \`lux\` executable, this release's"
-            echo "LICENSE, README, and the full \`docs/\` reference."
+            echo "Each archive contains the \`nebra\` executable (plus a \`neb\`"
+            echo "alias on Windows), this release's LICENSE and README."
+            echo ""
+            echo "Documentation lives at <https://nebra-lang.github.io>."
             echo ""
             echo "### Downloads"
             echo ""
             echo "| Platform        | Archive                                |"
             echo "|-----------------|----------------------------------------|"
-            echo "| Linux x64       | \`lux-linux-x64.tar.gz\`               |"
-            echo "| Linux arm64     | \`lux-linux-arm64.tar.gz\`             |"
-            echo "| macOS arm64     | \`lux-osx-arm64.tar.gz\` (Apple Silicon) |"
-            echo "| Windows x64     | \`lux-win-x64.zip\`                    |"
-            echo "| Windows arm64   | \`lux-win-arm64.zip\`                  |"
+            echo "| Linux x64       | \`nebra-linux-x64.tar.gz\`               |"
+            echo "| Linux arm64     | \`nebra-linux-arm64.tar.gz\`             |"
+            echo "| macOS arm64     | \`nebra-osx-arm64.tar.gz\` (Apple Silicon) |"
+            echo "| Windows x64     | \`nebra-win-x64.zip\`                    |"
+            echo "| Windows arm64   | \`nebra-win-arm64.zip\`                  |"
             echo ""
             echo "SHA-256 checksums are published alongside each archive."
             echo ""
@@ -285,12 +284,12 @@ jobs:
             echo ""
             echo "\`\`\`bash"
             echo "# Linux / macOS"
-            echo "tar xzf lux-linux-x64.tar.gz"
-            echo "sudo mv lux /usr/local/bin/"
-            echo "lux version"
+            echo "tar xzf nebra-linux-x64.tar.gz"
+            echo "sudo mv nebra /usr/local/bin/"
+            echo "nebra version"
             echo "\`\`\`"
             echo ""
-            echo "Or extract the Windows archive and put \`lux.exe\` somewhere on \`%PATH%\`."
+            echo "Or extract the Windows archive and put \`nebra.exe\` somewhere on \`%PATH%\`."
             echo ""
             echo "### What's changed"
             echo ""
@@ -302,14 +301,14 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ steps.tag.outputs.name }}
-          name: Lux ${{ steps.tag.outputs.name }}
+          name: Nebra ${{ steps.tag.outputs.name }}
           body_path: release-notes.md
           draft: false
           prerelease: ${{ contains(steps.tag.outputs.name, '-') }}
           files: |
-            artifacts/lux-*.tar.gz
-            artifacts/lux-*.zip
-            artifacts/lux-*.sha256
+            artifacts/nebra-*.tar.gz
+            artifacts/nebra-*.zip
+            artifacts/nebra-*.sha256
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
@@ -335,7 +334,7 @@ jobs:
       - name: Download VSIX
         uses: actions/download-artifact@v4
         with:
-          name: lux-vsix
+          name: nebra-vsix
           path: .
 
       - name: Upload VSIX to the release
@@ -345,7 +344,7 @@ jobs:
         run: |
           set -euo pipefail
           gh release upload "${{ steps.tag.outputs.name }}" \
-            lux-lang-*.vsix lux-lang-*.vsix.sha256 \
+            nebra-*.vsix nebra-*.vsix.sha256 \
             --clobber --repo "${{ github.repository }}"
 
   publish-marketplace:
@@ -364,7 +363,7 @@ jobs:
       - name: Download VSIX
         uses: actions/download-artifact@v4
         with:
-          name: lux-vsix
+          name: nebra-vsix
           path: .
 
       - name: Publish to Marketplace

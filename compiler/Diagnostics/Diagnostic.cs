@@ -1,4 +1,4 @@
-﻿namespace Lux.Diagnostics;
+﻿namespace Nebra.Diagnostics;
 
 /// <summary>
 /// The diagnostic itself with all the information about the diagnostic, such as the code, the category, the level, the message format, etc.

@@ -1,6 +1,6 @@
 using System.Diagnostics;
 
-namespace Lux.PackageManager;
+namespace Nebra.PackageManager;
 
 /// <summary>
 /// Thin wrapper around the system <c>git</c> binary. Runs processes async, captures stdout/stderr

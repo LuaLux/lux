@@ -1,8 +1,8 @@
-namespace Lux.Configuration;
+namespace Nebra.Configuration;
 
 /// <summary>
 /// Path-glob → side-set resolver used by <c>Config.Sides</c> entries from
-/// <c>lux.toml</c>:
+/// <c>nebra.toml</c>:
 /// <code>
 /// [sides]
 /// "src/Client/**" = ["client", "shared"]

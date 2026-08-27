@@ -1,6 +1,6 @@
--- lua-math: a tiny pure-Lua library used as a reference for "Lux project that
+-- lua-math: a tiny pure-Lua library used as a reference for "Nebra project that
 -- consumes a Lua dependency". The runtime side lives entirely in this file;
--- the matching `init.d.lux` provides Lux type information for the consumer.
+-- the matching `init.d.neb` provides Nebra type information for the consumer.
 
 local M = {}
 

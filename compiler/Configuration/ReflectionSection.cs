@@ -1,8 +1,8 @@
-namespace Lux.Configuration;
+namespace Nebra.Configuration;
 
 /// <summary>
 /// The <c>[reflection]</c> section. Controls emission of runtime reflection metadata — a global
-/// registry (<c>_G.__lux_reflect</c>) describing the program's types, populated by generated code
+/// registry (<c>_G.__nebra_reflect</c>) describing the program's types, populated by generated code
 /// and read at runtime through the <c>reflect</c> library.
 /// </summary>
 public sealed class ReflectionSection

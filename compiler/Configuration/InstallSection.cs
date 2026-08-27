@@ -1,6 +1,6 @@
-using Lux.PackageManager;
+using Nebra.PackageManager;
 
-namespace Lux.Configuration;
+namespace Nebra.Configuration;
 
 /// <summary>
 /// Install-time knobs for the package manager.
@@ -8,7 +8,7 @@ namespace Lux.Configuration;
 public sealed class InstallSection
 {
     /// <summary>
-    /// Controls how <c>lux_modules/&lt;name&gt;</c> entries point into the global store.
+    /// Controls how <c>nebra_modules/&lt;name&gt;</c> entries point into the global store.
     /// Default is <see cref="LinkerKind.Auto"/> which picks symlink on Unix and junction on Windows.
     /// </summary>
     public LinkerKind Linker { get; set; } = LinkerKind.Auto;

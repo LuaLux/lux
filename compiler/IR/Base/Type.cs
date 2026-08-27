@@ -1,7 +1,7 @@
 ﻿using System.ComponentModel;
-using Lux.Configuration;
+using Nebra.Configuration;
 
-namespace Lux.IR;
+namespace Nebra.IR;
 
 /// <summary>
 /// The kind of a type. This is used to distinguish different types in the type system, such as primitive types, table
@@ -565,7 +565,7 @@ public sealed class ClassType(
     /// Placeholders: <c>$class</c> → the class identifier, <c>$args</c> → the
     /// comma-separated rendered arguments. Used by external runtimes that expose
     /// classes via a different call convention (e.g. nanos-world's <c>Database(args)</c>
-    /// vs Lux's <c>Database.new(args)</c>).
+    /// vs Nebra's <c>Database.new(args)</c>).
     /// </summary>
     public string? CtorTemplate { get; set; }
 

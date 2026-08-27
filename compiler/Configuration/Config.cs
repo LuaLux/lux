@@ -2,11 +2,11 @@
 using System.Text.Json.Serialization;
 using Tomlyn;
 
-namespace Lux.Configuration;
+namespace Nebra.Configuration;
 
 /// <summary>
-/// Represents the configuration of the Lux compiler, which can be loaded from a TOML file. The configuration file
-/// (lux.toml) is used to configure the transpilers behavior, such as the target language, the output directory, and
+/// Represents the configuration of the Nebra compiler, which can be loaded from a TOML file. The configuration file
+/// (nebra.toml) is used to configure the transpilers behavior, such as the target language, the output directory, and
 /// other options.
 /// </summary>
 public sealed class Config
@@ -30,7 +30,7 @@ public sealed class Config
     public LuaVersion Target { get; set; } = LuaVersion.Lua54;
 
     /// <summary>
-    /// The entry Lux file.
+    /// The entry Nebra file.
     /// </summary>
     public string? Entry { get; set; }
 
@@ -80,16 +80,16 @@ public sealed class Config
     public List<string> Globals { get; set; } = [];
     
     /// <summary>
-    /// A list of relative directories or Lux files to load annotation plugins from.
+    /// A list of relative directories or Nebra files to load annotation plugins from.
     /// </summary>
     public List<string> Annotations { get; set; } = [];
 
     public string Source { get; set; } = "src";
 
     /// <summary>
-    /// When true, the project ships only <c>.d.lux</c> declaration files (a "types-only"
-    /// package — like a TypeScript <c>@types/*</c> shim). <c>lux build</c>, <c>compile</c>,
-    /// <c>run</c> and <c>test</c> become graceful no-ops; <c>lux docs</c> still generates.
+    /// When true, the project ships only <c>.d.neb</c> declaration files (a "types-only"
+    /// package — like a TypeScript <c>@types/*</c> shim). <c>nebra build</c>, <c>compile</c>,
+    /// <c>run</c> and <c>test</c> become graceful no-ops; <c>nebra docs</c> still generates.
     /// </summary>
     public bool TypesOnly { get; set; } = false;
 
@@ -120,9 +120,9 @@ public sealed class Config
 
     /// <summary>
     /// When true, undeclared identifiers are silently treated as <c>any</c>-typed
-    /// globals so a fresh per-input compilation in <c>lux repl</c> can still reach
+    /// globals so a fresh per-input compilation in <c>nebra repl</c> can still reach
     /// state from earlier inputs (whose locals/declarations did not survive). Never
-    /// loaded from <c>lux.toml</c> — set programmatically by the REPL host only.
+    /// loaded from <c>nebra.toml</c> — set programmatically by the REPL host only.
     /// </summary>
     [JsonIgnore] public bool ReplMode { get; set; } = false;
 
@@ -139,7 +139,7 @@ public sealed class Config
 
     /// <summary>
     /// Asset files to copy to the output directory. Keys are relative paths to the source files, values are relative
-    /// paths in the output directory. This is used to include non-Lux files in the output, such as images, sounds, or
+    /// paths in the output directory. This is used to include non-Nebra files in the output, such as images, sounds, or
     /// other resources.
     /// </summary>
     public Dictionary<string, string> Assets { get; set; } = new();

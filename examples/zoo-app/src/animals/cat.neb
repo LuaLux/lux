@@ -1,0 +1,18 @@
+--- Sub-module of the local `animals/` folder. Reachable from main.neb as
+--- `import { Cat } from "animals/cat"`. Imports its shared interface from
+--- the folder's init.neb via `from "animals"` — the resolver walks up to
+--- the directory and re-resolves through init.neb.
+
+import { Animal } from "animals"
+
+export class Cat implements Animal
+    name: string
+
+    constructor(name: string)
+        self.name = name
+    end
+
+    function sound(): string
+        return "meow"
+    end
+end

@@ -1,0 +1,55 @@
+declare module "nebra.annotation"
+    enum AnnotationTarget
+        Function
+        LocalFunction
+        Variable
+        Parameter
+        Enum
+        EnumMember
+        Class
+        ClassMethod
+        ClassField
+        ClassConstructor
+        ClassAccessor
+        Interface
+        InterfaceMethod
+        InterfaceField
+    end
+
+    interface AnnotationParamSpec
+        type: string
+        default: any
+        required: boolean
+    end
+
+    interface AnnotationMeta
+        target: AnnotationTarget
+        params: { [string]: AnnotationParamSpec }
+    end
+
+    interface IRNode
+        kind: string
+        id: number
+        span: number[]
+    end
+
+    declare ir: {
+        stringLiteral: (value: string) -> IRNode,
+        numberLiteral: (raw: string) -> IRNode,
+        boolLiteral: (value: boolean) -> IRNode,
+        nilLiteral: () -> IRNode,
+        nameExpr: (name: string) -> IRNode,
+        call: (callee: any, args: IRNode[]) -> IRNode,
+        methodCall: (object: IRNode, method: string, args: IRNode[]) -> IRNode,
+        dotAccess: (object: IRNode, field: string) -> IRNode,
+        exprStmt: (expr: IRNode) -> IRNode,
+        returnStmt: (values: IRNode[]) -> IRNode,
+        localDecl: (name: string, value: IRNode?) -> IRNode,
+        newExpr: (className: string, args: IRNode[]?) -> IRNode,
+        varargExpr: () -> IRNode,
+        param: (name: string, opts: { isVararg: boolean? }?) -> IRNode,
+        functionDef: (params: IRNode[], body: IRNode[], returnStmt: IRNode?) -> IRNode,
+        varargMethodCallClosure: (instExpr: IRNode, methodName: string) -> IRNode,
+        annotation: (name: string, args: any[]) -> IRNode,
+    }
+end

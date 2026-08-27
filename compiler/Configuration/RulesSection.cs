@@ -1,4 +1,4 @@
-﻿namespace Lux.Configuration;
+﻿namespace Nebra.Configuration;
 
 /// <summary>
 /// The [rules] section of the <see cref="Config"/>. The rules section is used to configure the rules of the compiler,

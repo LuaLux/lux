@@ -1,0 +1,45 @@
+--- Thin adapter over `nebra:test`. Keeps the legacy `section/expect/expectEq/...`
+--- surface so the existing 13 suite files don't have to be rewritten; under the
+--- hood every call lands as a real `test(...)` in the nebra:test runtime so the
+--- `nebra test` CLI sees real pass/fail counts and exit codes.
+
+import { test, describe, expect as nebraExpect } from "nebra:test"
+
+--- Prints a section header (no behavioural effect — the nebra:test runtime
+--- groups via `describe`, but here we only need a visual separator).
+export function section(name: string): nil
+    print("")
+    print("-- " .. name .. " --")
+end
+
+--- Records one boolean assertion as a nebra:test `test`.
+export function expect(name: string, ok: boolean): nil
+    test(name, function(): nil
+        nebraExpect(ok):toBeTruthy()
+    end)
+end
+
+--- Equality assertion (`==`).
+export function expectEq(name: string, actual: any, expected: any): nil
+    test(name, function(): nil
+        nebraExpect(actual):toBe(expected)
+    end)
+end
+
+--- Numeric tolerance assertion.
+export function expectNear(name: string, actual: number, expected: number, eps: number): nil
+    test(name, function(): nil
+        nebraExpect(actual):toBeNear(expected, eps)
+    end)
+end
+
+--- Asserts the supplied function raises.
+export function expectError(name: string, fn: () -> any): nil
+    test(name, function(): nil
+        nebraExpect(fn):toThrow()
+    end)
+end
+
+--- No-op kept for source compatibility — the CLI prints the aggregate report.
+export function summary(): nil
+end

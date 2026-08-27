@@ -1,6 +1,6 @@
--- Runtime implementation of the `lux:test` module. Loaded via
--- package.preload by LuxRuntime.RegisterTestModule so that
--- `require("lux:test")` resolves without touching package.path.
+-- Runtime implementation of the `nebra:test` module. Loaded via
+-- package.preload by NebraRuntime.RegisterTestModule so that
+-- `require("nebra:test")` resolves without touching package.path.
 
 local M = {}
 

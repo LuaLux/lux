@@ -1,6 +1,6 @@
 using System.Text;
 
-namespace Lux.Doc;
+namespace Nebra.Doc;
 
 /// <summary>
 /// Extracts and parses LuaCATS-style documentation comments from raw source text.
@@ -14,7 +14,7 @@ namespace Lux.Doc;
 /// </list>
 ///
 /// The parser intentionally accepts the LuaLS syntax verbatim — including tags
-/// whose role partly overlaps with Lux's own grammar (<c>@param</c>'s type
+/// whose role partly overlaps with Nebra's own grammar (<c>@param</c>'s type
 /// annotation, etc.) — so existing Lua docs paste in unchanged. Tag types are
 /// kept as raw text (<see cref="DocParam.TypeText"/>) rather than re-parsed.
 /// </summary>
@@ -23,7 +23,7 @@ public static class DocCommentParser
     /// <summary>
     /// Returns the doc comment that immediately precedes the given line in the
     /// source, or null if no doc comment is found. <paramref name="targetLine"/>
-    /// is 1-based, matching <see cref="Lux.Diagnostics.TextSpan.StartLn"/>.
+    /// is 1-based, matching <see cref="Nebra.Diagnostics.TextSpan.StartLn"/>.
     /// </summary>
     public static DocComment? ExtractAt(string source, int targetLine)
     {

@@ -1,4 +1,4 @@
-﻿namespace Lux.Diagnostics;
+﻿namespace Nebra.Diagnostics;
 
 /// <summary>
 /// Sets a message format for a <see cref="DiagnosticCode"/>. The format is basically a description that explains

@@ -1,13 +1,13 @@
-using Lux.IR;
+using Nebra.IR;
 using OmniSharp.Extensions.LanguageServer.Protocol.Client.Capabilities;
 using OmniSharp.Extensions.LanguageServer.Protocol.Document;
 using OmniSharp.Extensions.LanguageServer.Protocol.Models;
 
 using LspSymbolKind = OmniSharp.Extensions.LanguageServer.Protocol.Models.SymbolKind;
 
-namespace Lux.LPS.Handlers;
+namespace Nebra.LPS.Handlers;
 
-public sealed class DocumentSymbolHandler(LuxWorkspace workspace) : DocumentSymbolHandlerBase
+public sealed class DocumentSymbolHandler(NebraWorkspace workspace) : DocumentSymbolHandlerBase
 {
     public override Task<SymbolInformationOrDocumentSymbolContainer?> Handle(
         DocumentSymbolParams request, CancellationToken ct)
@@ -36,8 +36,8 @@ public sealed class DocumentSymbolHandler(LuxWorkspace workspace) : DocumentSymb
                     {
                         Name = name,
                         Kind = LspSymbolKind.Function,
-                        Range = LuxWorkspace.SpanToRange(fd.Span),
-                        SelectionRange = LuxWorkspace.SpanToRange(fd.NamePath[0].Span)
+                        Range = NebraWorkspace.SpanToRange(fd.Span),
+                        SelectionRange = NebraWorkspace.SpanToRange(fd.NamePath[0].Span)
                     });
                     break;
                 }
@@ -46,8 +46,8 @@ public sealed class DocumentSymbolHandler(LuxWorkspace workspace) : DocumentSymb
                     {
                         Name = lfd.Name.Name,
                         Kind = LspSymbolKind.Function,
-                        Range = LuxWorkspace.SpanToRange(lfd.Span),
-                        SelectionRange = LuxWorkspace.SpanToRange(lfd.Name.Span)
+                        Range = NebraWorkspace.SpanToRange(lfd.Span),
+                        SelectionRange = NebraWorkspace.SpanToRange(lfd.Name.Span)
                     });
                     break;
                 case LocalDecl ld:
@@ -57,8 +57,8 @@ public sealed class DocumentSymbolHandler(LuxWorkspace workspace) : DocumentSymb
                         {
                             Name = v.Name.Name,
                             Kind = LspSymbolKind.Variable,
-                            Range = LuxWorkspace.SpanToRange(v.Span),
-                            SelectionRange = LuxWorkspace.SpanToRange(v.Name.Span)
+                            Range = NebraWorkspace.SpanToRange(v.Span),
+                            SelectionRange = NebraWorkspace.SpanToRange(v.Name.Span)
                         });
                     }
                     break;
@@ -71,8 +71,8 @@ public sealed class DocumentSymbolHandler(LuxWorkspace workspace) : DocumentSymb
                         {
                             Name = "constructor",
                             Kind = LspSymbolKind.Constructor,
-                            Range = LuxWorkspace.SpanToRange(cd.Constructor.Span),
-                            SelectionRange = LuxWorkspace.SpanToRange(cd.Constructor.Span)
+                            Range = NebraWorkspace.SpanToRange(cd.Constructor.Span),
+                            SelectionRange = NebraWorkspace.SpanToRange(cd.Constructor.Span)
                         });
                     }
                     foreach (var method in cd.Methods)
@@ -84,8 +84,8 @@ public sealed class DocumentSymbolHandler(LuxWorkspace workspace) : DocumentSymb
                         {
                             Name = label,
                             Kind = method.IsOperator ? LspSymbolKind.Operator : LspSymbolKind.Method,
-                            Range = LuxWorkspace.SpanToRange(method.Span),
-                            SelectionRange = LuxWorkspace.SpanToRange(method.Name.Span)
+                            Range = NebraWorkspace.SpanToRange(method.Span),
+                            SelectionRange = NebraWorkspace.SpanToRange(method.Name.Span)
                         });
                     }
                     foreach (var field in cd.Fields)
@@ -94,8 +94,8 @@ public sealed class DocumentSymbolHandler(LuxWorkspace workspace) : DocumentSymb
                         {
                             Name = field.Name.Name,
                             Kind = LspSymbolKind.Field,
-                            Range = LuxWorkspace.SpanToRange(field.Span),
-                            SelectionRange = LuxWorkspace.SpanToRange(field.Name.Span)
+                            Range = NebraWorkspace.SpanToRange(field.Span),
+                            SelectionRange = NebraWorkspace.SpanToRange(field.Name.Span)
                         });
                     }
                     foreach (var accessor in cd.Accessors)
@@ -104,16 +104,16 @@ public sealed class DocumentSymbolHandler(LuxWorkspace workspace) : DocumentSymb
                         {
                             Name = (accessor.Kind == AccessorKind.Getter ? "get " : "set ") + accessor.Name.Name,
                             Kind = LspSymbolKind.Property,
-                            Range = LuxWorkspace.SpanToRange(accessor.Span),
-                            SelectionRange = LuxWorkspace.SpanToRange(accessor.Name.Span)
+                            Range = NebraWorkspace.SpanToRange(accessor.Span),
+                            SelectionRange = NebraWorkspace.SpanToRange(accessor.Name.Span)
                         });
                     }
                     symbols.Add(new DocumentSymbol
                     {
                         Name = cd.Name.Name,
                         Kind = LspSymbolKind.Class,
-                        Range = LuxWorkspace.SpanToRange(cd.Span),
-                        SelectionRange = LuxWorkspace.SpanToRange(cd.Name.Span),
+                        Range = NebraWorkspace.SpanToRange(cd.Span),
+                        SelectionRange = NebraWorkspace.SpanToRange(cd.Name.Span),
                         Children = new Container<DocumentSymbol>(children)
                     });
                     break;
@@ -123,8 +123,8 @@ public sealed class DocumentSymbolHandler(LuxWorkspace workspace) : DocumentSymb
                     {
                         Name = id.Name.Name,
                         Kind = LspSymbolKind.Interface,
-                        Range = LuxWorkspace.SpanToRange(id.Span),
-                        SelectionRange = LuxWorkspace.SpanToRange(id.Name.Span)
+                        Range = NebraWorkspace.SpanToRange(id.Span),
+                        SelectionRange = NebraWorkspace.SpanToRange(id.Name.Span)
                     });
                     break;
                 case ExportStmt exp:
@@ -139,7 +139,7 @@ public sealed class DocumentSymbolHandler(LuxWorkspace workspace) : DocumentSymb
     {
         return new DocumentSymbolRegistrationOptions
         {
-            DocumentSelector = TextDocumentSelector.ForLanguage("lux")
+            DocumentSelector = TextDocumentSelector.ForLanguage("nebra")
         };
     }
 }

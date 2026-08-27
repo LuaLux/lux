@@ -1,6 +1,6 @@
-using Lux.Diagnostics;
+using Nebra.Diagnostics;
 
-namespace Lux.IR;
+namespace Nebra.IR;
 
 public sealed class AssignStmt(NodeID id, TextSpan span, List<Expr> targets, List<Expr> values) : Stmt(id, span)
 {

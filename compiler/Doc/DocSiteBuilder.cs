@@ -1,11 +1,11 @@
-using Lux.Compiler;
-using Lux.Configuration;
-using Lux.IR;
+using Nebra.Compiler;
+using Nebra.Configuration;
+using Nebra.IR;
 
-namespace Lux.Doc;
+namespace Nebra.Doc;
 
 /// <summary>
-/// Walks every <c>.lux</c> file under the project's source root, compiles
+/// Walks every <c>.neb</c> file under the project's source root, compiles
 /// them through the standard pipeline so doc comments and inferred types
 /// are populated, and produces the format-agnostic <see cref="DocSite"/>
 /// model that the markdown and HTML renderers consume.
@@ -20,12 +20,12 @@ public static class DocSiteBuilder
         if (!Directory.Exists(srcDir))
         {
             diagnostics.Add($"Source directory '{srcDir}' not found.");
-            return new DocSite { ProjectName = config.Name ?? "lux project", ProjectVersion = config.Version };
+            return new DocSite { ProjectName = config.Name ?? "nebra project", ProjectVersion = config.Version };
         }
 
-        var compiler = new LuxCompiler { Config = config.Clone() };
-        var files = Directory.EnumerateFiles(srcDir, "*.lux", SearchOption.AllDirectories)
-            .Where(f => !f.EndsWith(".d.lux", StringComparison.OrdinalIgnoreCase))
+        var compiler = new NebraCompiler { Config = config.Clone() };
+        var files = Directory.EnumerateFiles(srcDir, "*.neb", SearchOption.AllDirectories)
+            .Where(f => !f.EndsWith(".d.neb", StringComparison.OrdinalIgnoreCase))
             .OrderBy(f => f, StringComparer.OrdinalIgnoreCase)
             .ToList();
 
@@ -34,12 +34,12 @@ public static class DocSiteBuilder
 
         compiler.Compile();
         foreach (var d in compiler.Diagnostics.Diagnostics)
-            if (d.Level == Lux.Diagnostics.DiagnosticLevel.Error)
+            if (d.Level == Nebra.Diagnostics.DiagnosticLevel.Error)
                 diagnostics.Add(d.ToString());
 
         var site = new DocSite
         {
-            ProjectName = config.Name ?? "lux project",
+            ProjectName = config.Name ?? "nebra project",
             ProjectVersion = config.Version
         };
 
@@ -64,7 +64,7 @@ public static class DocSiteBuilder
     private static DocModule BuildModule(PackageContext pkg, PreparsedFile file, string srcDir)
     {
         var slug = Path.GetRelativePath(srcDir, file.Filename!).Replace('\\', '/');
-        if (slug.EndsWith(".lux", StringComparison.OrdinalIgnoreCase))
+        if (slug.EndsWith(".neb", StringComparison.OrdinalIgnoreCase))
             slug = slug[..^4];
 
         var symbols = new List<DocSymbol>();

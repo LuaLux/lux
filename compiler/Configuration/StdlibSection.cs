@@ -1,4 +1,4 @@
-namespace Lux.Configuration;
+namespace Nebra.Configuration;
 
 /// <summary>
 /// The [stdlib] section of the <see cref="Config"/>. Controls which Lua standard library

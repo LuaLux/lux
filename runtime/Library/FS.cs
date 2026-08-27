@@ -1,14 +1,14 @@
-using Lux.Runtime.Bindings;
+using Nebra.Runtime.Bindings;
 
-namespace Lux.Runtime.Library;
+namespace Nebra.Runtime.Library;
 
-[LuxExport("fs")]
+[NebraExport("fs")]
 public sealed class FS
 {
-    [LuxExport("readFile")]
+    [NebraExport("readFile")]
     public static string ReadFile(string path) => File.ReadAllText(path);
 
-    [LuxExport("writeFile")]
+    [NebraExport("writeFile")]
     public static void WriteFile(string path, string content)
     {
         var dir = Path.GetDirectoryName(Path.GetFullPath(path));
@@ -16,7 +16,7 @@ public sealed class FS
         File.WriteAllText(path, content);
     }
 
-    [LuxExport("appendFile")]
+    [NebraExport("appendFile")]
     public static void AppendFile(string path, string content)
     {
         var dir = Path.GetDirectoryName(Path.GetFullPath(path));
@@ -24,26 +24,26 @@ public sealed class FS
         File.AppendAllText(path, content);
     }
 
-    [LuxExport("exists")]
+    [NebraExport("exists")]
     public static bool Exists(string path) => File.Exists(path) || Directory.Exists(path);
 
-    [LuxExport("isFile")]
+    [NebraExport("isFile")]
     public static bool IsFile(string path) => File.Exists(path);
 
-    [LuxExport("isDir")]
+    [NebraExport("isDir")]
     public static bool IsDir(string path) => Directory.Exists(path);
 
-    [LuxExport("mkdir")]
+    [NebraExport("mkdir")]
     public static void Mkdir(string path) => Directory.CreateDirectory(path);
 
-    [LuxExport("remove")]
+    [NebraExport("remove")]
     public static void Remove(string path)
     {
         if (Directory.Exists(path)) Directory.Delete(path, recursive: true);
         else if (File.Exists(path)) File.Delete(path);
     }
 
-    [LuxExport("copy")]
+    [NebraExport("copy")]
     public static void Copy(string source, string destination)
     {
         if (Directory.Exists(source))
@@ -56,40 +56,40 @@ public sealed class FS
         File.Copy(source, destination, overwrite: true);
     }
 
-    [LuxExport("move")]
+    [NebraExport("move")]
     public static void Move(string source, string destination)
     {
         if (Directory.Exists(source)) Directory.Move(source, destination);
         else File.Move(source, destination, overwrite: true);
     }
 
-    [LuxExport("listFiles")]
+    [NebraExport("listFiles")]
     public static List<object?> ListFiles(string path, string pattern = "*")
     {
         if (!Directory.Exists(path)) return [];
         return Directory.EnumerateFiles(path, pattern).Select(p => (object?)p).ToList();
     }
 
-    [LuxExport("listDirs")]
+    [NebraExport("listDirs")]
     public static List<object?> ListDirs(string path)
     {
         if (!Directory.Exists(path)) return [];
         return Directory.EnumerateDirectories(path).Select(p => (object?)p).ToList();
     }
 
-    [LuxExport("cwd")]
+    [NebraExport("cwd")]
     public static string Cwd() => Environment.CurrentDirectory;
 
-    [LuxExport("join")]
+    [NebraExport("join")]
     public static string Join(string a, string b) => Path.Combine(a, b);
 
-    [LuxExport("basename")]
+    [NebraExport("basename")]
     public static string Basename(string path) => Path.GetFileName(path);
 
-    [LuxExport("dirname")]
+    [NebraExport("dirname")]
     public static string Dirname(string path) => Path.GetDirectoryName(path) ?? "";
 
-    [LuxExport("extname")]
+    [NebraExport("extname")]
     public static string Extname(string path) => Path.GetExtension(path);
 
     private static void CopyDirectory(string source, string destination)

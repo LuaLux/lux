@@ -1,6 +1,6 @@
 using System.Text;
 
-namespace Lux.Diagnostics;
+namespace Nebra.Diagnostics;
 
 /// <summary>
 /// Renders a <see cref="Diagnostic"/> as a Rust-style, human-readable block: a coloured

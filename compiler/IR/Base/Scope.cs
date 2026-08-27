@@ -1,6 +1,6 @@
-﻿using Lux.Diagnostics;
+﻿using Nebra.Diagnostics;
 
-namespace Lux.IR;
+namespace Nebra.IR;
 
 /// <summary>
 /// Represents a scope in the IR that can contain symbols and other scopes. A scope is a hierarchical structure that

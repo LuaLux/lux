@@ -1,12 +1,12 @@
-using Lux.Configuration;
-using Lux.Diagnostics;
-using Lux.IR;
+using Nebra.Configuration;
+using Nebra.Diagnostics;
+using Nebra.IR;
 
-namespace Lux.Compiler.Passes;
+namespace Nebra.Compiler.Passes;
 
 /// <summary>
 /// Per-file pass that enforces <c>@side</c> visibility against the per-file
-/// side mask resolved from <c>[sides]</c> globs in <c>lux.toml</c>. Walks every
+/// side mask resolved from <c>[sides]</c> globs in <c>nebra.toml</c>. Walks every
 /// resolved <see cref="NameRef"/> reachable from the file's body and emits
 /// <see cref="DiagnosticCode.ErrSymbolWrongSide"/> when the referenced
 /// symbol's side mask doesn't cover the file's mask. Files outside any

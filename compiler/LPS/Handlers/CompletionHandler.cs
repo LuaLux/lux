@@ -1,14 +1,14 @@
-using Lux.Diagnostics;
-using Lux.IR;
+using Nebra.Diagnostics;
+using Nebra.IR;
 using OmniSharp.Extensions.LanguageServer.Protocol.Client.Capabilities;
 using OmniSharp.Extensions.LanguageServer.Protocol.Document;
 using OmniSharp.Extensions.LanguageServer.Protocol.Models;
-using LuxSymbolKind = Lux.IR.SymbolKind;
-using LuxType = Lux.IR.Type;
+using NebraSymbolKind = Nebra.IR.SymbolKind;
+using NebraType = Nebra.IR.Type;
 
-namespace Lux.LPS.Handlers;
+namespace Nebra.LPS.Handlers;
 
-public sealed class CompletionHandler(LuxWorkspace workspace) : CompletionHandlerBase
+public sealed class CompletionHandler(NebraWorkspace workspace) : CompletionHandlerBase
 {
     private static readonly string[] Keywords =
     [
@@ -93,11 +93,11 @@ public sealed class CompletionHandler(LuxWorkspace workspace) : CompletionHandle
                 var typeStr = workspace.FormatType(result.Types, sym.Type);
                 var kind = sym.Kind switch
                 {
-                    LuxSymbolKind.Function => CompletionItemKind.Function,
-                    LuxSymbolKind.Enum => CompletionItemKind.Enum,
-                    LuxSymbolKind.Class => CompletionItemKind.Class,
-                    LuxSymbolKind.Interface => CompletionItemKind.Interface,
-                    LuxSymbolKind.TypeParam => CompletionItemKind.TypeParameter,
+                    NebraSymbolKind.Function => CompletionItemKind.Function,
+                    NebraSymbolKind.Enum => CompletionItemKind.Enum,
+                    NebraSymbolKind.Class => CompletionItemKind.Class,
+                    NebraSymbolKind.Interface => CompletionItemKind.Interface,
+                    NebraSymbolKind.TypeParam => CompletionItemKind.TypeParameter,
                     _ => CompletionItemKind.Variable
                 };
                 items.Add(new CompletionItem
@@ -125,8 +125,8 @@ public sealed class CompletionHandler(LuxWorkspace workspace) : CompletionHandle
         return Task.FromResult(new CompletionList(items));
     }
 
-    private static bool IsTypeKind(LuxSymbolKind kind) =>
-        kind is LuxSymbolKind.Class or LuxSymbolKind.Interface or LuxSymbolKind.Enum or LuxSymbolKind.TypeParam;
+    private static bool IsTypeKind(NebraSymbolKind kind) =>
+        kind is NebraSymbolKind.Class or NebraSymbolKind.Interface or NebraSymbolKind.Enum or NebraSymbolKind.TypeParam;
 
     private static StringOrMarkupContent? BuildSymbolDocumentation(AnalysisResult result, Symbol sym)
     {
@@ -489,7 +489,7 @@ public sealed class CompletionHandler(LuxWorkspace workspace) : CompletionHandle
                 }
             }
 
-            foreach (var (name, method) in Lux.IR.Type.EnumerateExtensions(classType, result.Types.PrimFunction))
+            foreach (var (name, method) in Nebra.IR.Type.EnumerateExtensions(classType, result.Types.PrimFunction))
             {
                 if (name.StartsWith("__")) continue;
                 if (!seen.Add(name)) continue;
@@ -520,7 +520,7 @@ public sealed class CompletionHandler(LuxWorkspace workspace) : CompletionHandle
             // declared on it via `extend number` / `extend string`.
             var extItems = new List<CompletionItem>();
             var extSeen = new HashSet<string>(StringComparer.Ordinal);
-            foreach (var (name, method) in Lux.IR.Type.EnumerateExtensions(finalType, result.Types.PrimFunction))
+            foreach (var (name, method) in Nebra.IR.Type.EnumerateExtensions(finalType, result.Types.PrimFunction))
             {
                 if (name.StartsWith("__")) continue;
                 if (!extSeen.Add(name)) continue;
@@ -613,7 +613,7 @@ public sealed class CompletionHandler(LuxWorkspace workspace) : CompletionHandle
             });
         }
 
-        foreach (var file in Directory.GetFiles(searchDir, "*.lux"))
+        foreach (var file in Directory.GetFiles(searchDir, "*.neb"))
         {
             var name = Path.GetFileNameWithoutExtension(file);
             if (string.Equals(Path.GetFullPath(file), Path.GetFullPath(result.FilePath),
@@ -627,7 +627,7 @@ public sealed class CompletionHandler(LuxWorkspace workspace) : CompletionHandle
             });
         }
 
-        foreach (var file in Directory.GetFiles(searchDir, "*.d.lux"))
+        foreach (var file in Directory.GetFiles(searchDir, "*.d.neb"))
         {
             var name = Path.GetFileName(file);
             var baseName = name[..^6];
@@ -741,7 +741,7 @@ public sealed class CompletionHandler(LuxWorkspace workspace) : CompletionHandle
                 Documentation = new StringOrMarkupContent(new MarkupContent
                 {
                     Kind = MarkupKind.Markdown,
-                    Value = $"```lux\n{LuxWorkspace.FormatAnnotationSignature(meta)}\n```"
+                    Value = $"```nebra\n{NebraWorkspace.FormatAnnotationSignature(meta)}\n```"
                 }),
                 InsertText = insertText,
                 InsertTextFormat = insertFormat,
@@ -751,7 +751,7 @@ public sealed class CompletionHandler(LuxWorkspace workspace) : CompletionHandle
         return items;
     }
 
-    private static string DefaultSnippetValue(Lux.Compiler.Annotations.AnnotationParamSpec p)
+    private static string DefaultSnippetValue(Nebra.Compiler.Annotations.AnnotationParamSpec p)
     {
         return p.TypeName.ToLowerInvariant() switch
         {
@@ -826,7 +826,7 @@ public sealed class CompletionHandler(LuxWorkspace workspace) : CompletionHandle
     {
         return new CompletionRegistrationOptions
         {
-            DocumentSelector = TextDocumentSelector.ForLanguage("lux"),
+            DocumentSelector = TextDocumentSelector.ForLanguage("nebra"),
             TriggerCharacters = new Container<string>(".", ":", "?", "/", "\"", "'", " ", "@"),
             ResolveProvider = false
         };

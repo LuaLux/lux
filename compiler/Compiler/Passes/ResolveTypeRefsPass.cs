@@ -1,7 +1,7 @@
-﻿using Lux.IR;
-using Type = Lux.IR.Type;
+﻿using Nebra.IR;
+using Type = Nebra.IR.Type;
 
-namespace Lux.Compiler.Passes;
+namespace Nebra.Compiler.Passes;
 
 /// <summary>
 /// The resolve type refs pass is responsible for resolving type references in the source code. It binds their
@@ -713,7 +713,7 @@ public class ResolveTypeRefsPass() : Pass(PassName, PassScope.PerBuild)
                 return resolved;
             }
 
-            _ctx.Diag.Report(tr.Span, Lux.Diagnostics.DiagnosticCode.ErrUndeclaredSymbol, nrt.Name.Name);
+            _ctx.Diag.Report(tr.Span, Nebra.Diagnostics.DiagnosticCode.ErrUndeclaredSymbol, nrt.Name.Name);
             tr.ResolvedType = tt.PrimAny.ID;
             return tt.PrimAny;
         }
@@ -725,7 +725,7 @@ public class ResolveTypeRefsPass() : Pass(PassName, PassScope.PerBuild)
                 || gsym.Type == TypID.Invalid
                 || !tt.GetByID(gsym.Type, out var gDefType))
             {
-                _ctx.Diag.Report(tr.Span, Lux.Diagnostics.DiagnosticCode.ErrUndeclaredSymbol, gtr.Name.Name);
+                _ctx.Diag.Report(tr.Span, Nebra.Diagnostics.DiagnosticCode.ErrUndeclaredSymbol, gtr.Name.Name);
                 tr.ResolvedType = tt.PrimAny.ID;
                 return tt.PrimAny;
             }
@@ -738,21 +738,21 @@ public class ResolveTypeRefsPass() : Pass(PassName, PassScope.PerBuild)
                 case ClassType ct: expectedArity = ct.TypeParams.Count; break;
                 case InterfaceType it: expectedArity = it.TypeParams.Count; break;
                 default:
-                    _ctx.Diag.Report(tr.Span, Lux.Diagnostics.DiagnosticCode.ErrNonGenericTypeArgs, gtr.Name.Name);
+                    _ctx.Diag.Report(tr.Span, Nebra.Diagnostics.DiagnosticCode.ErrNonGenericTypeArgs, gtr.Name.Name);
                     tr.ResolvedType = gDefType.ID;
                     return gDefType;
             }
 
             if (expectedArity == 0)
             {
-                _ctx.Diag.Report(tr.Span, Lux.Diagnostics.DiagnosticCode.ErrNonGenericTypeArgs, gtr.Name.Name);
+                _ctx.Diag.Report(tr.Span, Nebra.Diagnostics.DiagnosticCode.ErrNonGenericTypeArgs, gtr.Name.Name);
                 tr.ResolvedType = gDefType.ID;
                 return gDefType;
             }
 
             if (gtr.Arguments.Count != expectedArity)
             {
-                _ctx.Diag.Report(tr.Span, Lux.Diagnostics.DiagnosticCode.ErrTypeParamArityMismatch,
+                _ctx.Diag.Report(tr.Span, Nebra.Diagnostics.DiagnosticCode.ErrTypeParamArityMismatch,
                     gtr.Name.Name, expectedArity, gtr.Arguments.Count);
             }
 

@@ -1,1 +1,1 @@
-antlr4 -Dlanguage=CSharp -visitor -o CodeAnalysis Lux.g4
+antlr4 -Dlanguage=CSharp -visitor -o CodeAnalysis Nebra.g4

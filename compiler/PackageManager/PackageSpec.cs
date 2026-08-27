@@ -1,6 +1,6 @@
 using System.Text.RegularExpressions;
 
-namespace Lux.PackageManager;
+namespace Nebra.PackageManager;
 
 public enum SpecKind
 {

@@ -1,7 +1,7 @@
-﻿using Lux.Diagnostics;
-using Lux.IR;
+﻿using Nebra.Diagnostics;
+using Nebra.IR;
 
-namespace Lux.Compiler.Passes;
+namespace Nebra.Compiler.Passes;
 
 /// <summary>
 /// The pass manager is responsible for managing the passes and executing them in the correct order. It also provides a

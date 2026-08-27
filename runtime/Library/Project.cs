@@ -1,19 +1,19 @@
 using System.Diagnostics;
 using System.Text;
-using Lux.Runtime.Bindings;
+using Nebra.Runtime.Bindings;
 
-namespace Lux.Runtime.Library;
+namespace Nebra.Runtime.Library;
 
 /// <summary>
 /// High-level helpers for writing project scaffolding from setup scripts: <c>.gitignore</c>,
-/// <c>lux.toml</c>, and shell invocations. Exposed to Lua as the <c>project</c> global.
+/// <c>nebra.toml</c>, and shell invocations. Exposed to Lua as the <c>project</c> global.
 /// </summary>
-[LuxExport("project")]
+[NebraExport("project")]
 public sealed class Project
 {
     private static readonly string[] DefaultGitignore =
     [
-        "lux_modules/",
+        "nebra_modules/",
         "out/",
         "*.log",
         ".DS_Store",
@@ -22,11 +22,11 @@ public sealed class Project
     ];
 
     /// <summary>
-    /// Creates or updates a <c>.gitignore</c> at <paramref name="path"/> with Lux defaults
+    /// Creates or updates a <c>.gitignore</c> at <paramref name="path"/> with Nebra defaults
     /// plus any extra lines supplied by the caller. Existing entries are preserved and
     /// duplicates are skipped.
     /// </summary>
-    [LuxExport("writeGitignore")]
+    [NebraExport("writeGitignore")]
     public static void WriteGitignore(string path, IList<object?>? extra = null)
     {
         var lines = new List<string>(DefaultGitignore);
@@ -53,11 +53,11 @@ public sealed class Project
     }
 
     /// <summary>
-    /// Writes a <c>lux.toml</c> file from a plain table. Supports scalar keys, nested
+    /// Writes a <c>nebra.toml</c> file from a plain table. Supports scalar keys, nested
     /// tables, and <c>dependencies</c> / <c>dev_dependencies</c> / <c>peer_dependencies</c>
     /// which are emitted as dedicated <c>[section]</c> blocks.
     /// </summary>
-    [LuxExport("writeConfig")]
+    [NebraExport("writeConfig")]
     public static void WriteConfig(string path, IDictionary<string, object?> settings)
     {
         var dir = Path.GetDirectoryName(Path.GetFullPath(path));
@@ -68,10 +68,10 @@ public sealed class Project
     /// <summary>
     /// Writes <paramref name="contents"/> to <paramref name="path"/>, creating any
     /// missing parent directories. Used by setup scripts to lay down arbitrary
-    /// text files (Index.lux entries, sidecar manifests, etc.) without dropping
+    /// text files (Index.neb entries, sidecar manifests, etc.) without dropping
     /// to <c>io.open</c>.
     /// </summary>
-    [LuxExport("writeFile")]
+    [NebraExport("writeFile")]
     public static void WriteFile(string path, string contents)
     {
         var dir = Path.GetDirectoryName(Path.GetFullPath(path));
@@ -84,10 +84,10 @@ public sealed class Project
     /// Setup scripts should prefer this over <c>os.getenv("PWD")</c>, which
     /// reads the shell's PWD variable — that does NOT follow C#'s
     /// <c>Environment.CurrentDirectory</c> change made by the create flow,
-    /// so it would point at the directory `lux create` was launched from
+    /// so it would point at the directory `nebra create` was launched from
     /// instead of the freshly-created target dir.
     /// </summary>
-    [LuxExport("cwd")]
+    [NebraExport("cwd")]
     public static string Cwd()
     {
         return Environment.CurrentDirectory;
@@ -97,7 +97,7 @@ public sealed class Project
     /// Runs a shell command in <paramref name="cwd"/> (or the current working directory
     /// if nil). Returns the exit code. Output is inherited so users see progress.
     /// </summary>
-    [LuxExport("runShell")]
+    [NebraExport("runShell")]
     public static long RunShell(string command, string? cwd = null)
     {
         var isWindows = OperatingSystem.IsWindows();
@@ -119,7 +119,7 @@ public sealed class Project
     /// Runs <c>git init</c> (and optionally <c>git add .</c> + initial commit) in the
     /// given directory. Returns true when every step exits with 0.
     /// </summary>
-    [LuxExport("gitInit")]
+    [NebraExport("gitInit")]
     public static bool GitInit(string directory, bool initialCommit = false, string? commitMessage = null)
     {
         if (RunShell("git init", directory) != 0) return false;
@@ -130,12 +130,12 @@ public sealed class Project
     }
 
     /// <summary>
-    /// Convenience wrapper that runs <c>lux install</c> in <paramref name="directory"/>.
+    /// Convenience wrapper that runs <c>nebra install</c> in <paramref name="directory"/>.
     /// </summary>
-    [LuxExport("installDeps")]
+    [NebraExport("installDeps")]
     public static bool InstallDeps(string? directory = null, bool allowScripts = false)
     {
-        var cmd = allowScripts ? "lux install --allow-scripts" : "lux install";
+        var cmd = allowScripts ? "nebra install --allow-scripts" : "nebra install";
         return RunShell(cmd, directory) == 0;
     }
 

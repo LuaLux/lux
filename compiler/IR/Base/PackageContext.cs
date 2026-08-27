@@ -1,4 +1,4 @@
-﻿namespace Lux.IR;
+﻿namespace Nebra.IR;
 
 /// <summary>
 /// Represents the context of a package, which contains all the information about the package. The package context is

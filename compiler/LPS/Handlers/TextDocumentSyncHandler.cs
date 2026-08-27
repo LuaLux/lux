@@ -5,12 +5,12 @@ using OmniSharp.Extensions.LanguageServer.Protocol.Document;
 using OmniSharp.Extensions.LanguageServer.Protocol.Models;
 using OmniSharp.Extensions.LanguageServer.Protocol.Server.Capabilities;
 
-namespace Lux.LPS.Handlers;
+namespace Nebra.LPS.Handlers;
 
-public sealed class TextDocumentSyncHandler(LuxWorkspace workspace) : TextDocumentSyncHandlerBase
+public sealed class TextDocumentSyncHandler(NebraWorkspace workspace) : TextDocumentSyncHandlerBase
 {
     public override TextDocumentAttributes GetTextDocumentAttributes(DocumentUri uri)
-        => new(uri, "lux");
+        => new(uri, "nebra");
 
     public override Task<Unit> Handle(DidOpenTextDocumentParams request, CancellationToken ct)
     {
@@ -40,7 +40,7 @@ public sealed class TextDocumentSyncHandler(LuxWorkspace workspace) : TextDocume
     {
         return new TextDocumentSyncRegistrationOptions
         {
-            DocumentSelector = TextDocumentSelector.ForLanguage("lux"),
+            DocumentSelector = TextDocumentSelector.ForLanguage("nebra"),
             Change = TextDocumentSyncKind.Full,
             Save = new SaveOptions { IncludeText = true }
         };

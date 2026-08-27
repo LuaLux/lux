@@ -1,4 +1,4 @@
-﻿namespace Lux.IR;
+﻿namespace Nebra.IR;
 
 /// <summary>
 /// Base class for all IR IDs. An IR ID is a unique identifier for an IR node, such as a function, a type, a variable, etc.

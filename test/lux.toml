@@ -1,9 +1,0 @@
-name = "lux-runtime-tests"
-version = "0.1.0"
-target = "5.4"
-source = "src"
-output = "out"
-generate_declarations = false
-
-[code]
-index_base = 1

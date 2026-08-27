@@ -1,4 +1,4 @@
-namespace Lux.PackageManager;
+namespace Nebra.PackageManager;
 
 /// <summary>
 /// Lightweight terminal spinner for long-running PM operations (git fetch,

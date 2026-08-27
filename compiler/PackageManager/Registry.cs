@@ -1,28 +1,28 @@
 using System.Net.Http;
 using System.Text.Json;
 
-namespace Lux.PackageManager;
+namespace Nebra.PackageManager;
 
 /// <summary>
-/// Resolves bare alias specifiers (<c>lux-http</c>) to git URLs via a remote JSON index
+/// Resolves bare alias specifiers (<c>nebra-http</c>) to git URLs via a remote JSON index
 /// of shape <c>{ "name": "url", ... }</c>. The index is cached under
-/// <c>$LUX_HOME/cache/registry/index.json</c> with a 24-hour TTL.
+/// <c>$NEBRA_HOME/cache/registry/index.json</c> with a 24-hour TTL.
 /// </summary>
 public static class Registry
 {
-    public const string DefaultIndexUrl = "https://raw.githubusercontent.com/LuaLux/pm-registry/main/index.json";
+    public const string DefaultIndexUrl = "https://raw.githubusercontent.com/nebra-lang/pm-registry/main/index.json";
     private static readonly TimeSpan CacheTtl = TimeSpan.FromHours(24);
     private static readonly HttpClient Http = new() { Timeout = TimeSpan.FromSeconds(15) };
 
-    private static string IndexCachePath => Path.Combine(LuxHome.CacheRoot, "registry", "index.json");
+    private static string IndexCachePath => Path.Combine(NebraHome.CacheRoot, "registry", "index.json");
 
     /// <summary>
-    /// Returns the effective registry URL. Honors the <c>LUX_REGISTRY</c> environment variable
+    /// Returns the effective registry URL. Honors the <c>NEBRA_REGISTRY</c> environment variable
     /// when set, otherwise falls back to <see cref="DefaultIndexUrl"/>.
     /// </summary>
     public static string EffectiveUrl()
     {
-        var env = Environment.GetEnvironmentVariable("LUX_REGISTRY");
+        var env = Environment.GetEnvironmentVariable("NEBRA_REGISTRY");
         return string.IsNullOrWhiteSpace(env) ? DefaultIndexUrl : env;
     }
 
@@ -36,7 +36,7 @@ public static class Registry
     }
 
     /// <summary>
-    /// Forces a refresh of the cached index from the network. Used by <c>lux registry refresh</c>.
+    /// Forces a refresh of the cached index from the network. Used by <c>nebra registry refresh</c>.
     /// </summary>
     public static async Task RefreshAsync()
     {

@@ -1,8 +1,8 @@
 using System.Diagnostics;
-using Lux.Configuration.Converter;
+using Nebra.Configuration.Converter;
 using Tomlyn.Serialization;
 
-namespace Lux.PackageManager;
+namespace Nebra.PackageManager;
 
 [TomlConverter(typeof(LinkerKindConverter))]
 public enum LinkerKind
@@ -14,7 +14,7 @@ public enum LinkerKind
 }
 
 /// <summary>
-/// Creates a link (or falls back to a copy) from a project <c>lux_modules/&lt;name&gt;</c> entry
+/// Creates a link (or falls back to a copy) from a project <c>nebra_modules/&lt;name&gt;</c> entry
 /// into its store path. Strategy is platform-aware and degrades gracefully.
 /// </summary>
 public static class Linker

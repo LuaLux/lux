@@ -1,4 +1,4 @@
-﻿namespace Lux.Diagnostics;
+﻿namespace Nebra.Diagnostics;
 
 /// <summary>
 /// Sets a <see cref="DiagnosticLevel"/> for a <see cref="DiagnosticCode"/>.

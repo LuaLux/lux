@@ -1,4 +1,4 @@
-﻿namespace Lux.IR;
+﻿namespace Nebra.IR;
 
 /// <summary>
 /// Represents a pre-parsed source file after ANTLR converted the source code into the high-level intermediate representation (HIR).
@@ -22,10 +22,10 @@ public sealed class PreparsedFile(string? filename, string content)
 
     public string? GeneratedLua { get; set; }
 
-    public bool IsDeclarationFile => Filename != null && Filename.EndsWith(".d.lux", StringComparison.OrdinalIgnoreCase);
+    public bool IsDeclarationFile => Filename != null && Filename.EndsWith(".d.neb", StringComparison.OrdinalIgnoreCase);
 
     /// <summary>
-    /// Optional binding-scope override used by <see cref="Lux.Compiler.Passes.BindDeclarePass"/>.
+    /// Optional binding-scope override used by <see cref="Nebra.Compiler.Passes.BindDeclarePass"/>.
     /// When set, the file's top-level statements bind into this scope instead of the package
     /// root; lets imported library files keep their exports in a private scope so their
     /// names don't clash with the importer's <c>import { … }</c> declarations.

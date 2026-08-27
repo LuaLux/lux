@@ -2,7 +2,7 @@ using System.Formats.Tar;
 using System.Security.Cryptography;
 using System.Text;
 
-namespace Lux.PackageManager;
+namespace Nebra.PackageManager;
 
 /// <summary>
 /// Bridges the bare-clone cache, the content-addressed store, and <see cref="GitRunner"/>.
@@ -18,7 +18,7 @@ public sealed class GitFetcher
         if (spec.Kind != SpecKind.Git)
             throw new InvalidOperationException("EnsureBareCloneAsync requires a git spec");
 
-        var barePath = LuxHome.BareClonePath(spec.Host!, spec.Owner!, spec.Repo!);
+        var barePath = NebraHome.BareClonePath(spec.Host!, spec.Owner!, spec.Repo!);
         var parent = Path.GetDirectoryName(barePath)!;
         Directory.CreateDirectory(parent);
 
@@ -89,7 +89,7 @@ public sealed class GitFetcher
     /// Extracts a commit snapshot from the bare clone into <paramref name="destDir"/>.
     /// Idempotent by default — if the destination already exists and is non-empty,
     /// returns immediately. Pass <paramref name="forceFresh"/> to wipe the destination
-    /// first (used by <c>lux create</c> so the target staging dir always reflects the
+    /// first (used by <c>nebra create</c> so the target staging dir always reflects the
     /// just-fetched commit, never a leftover from a prior run).
     /// </summary>
     public async Task EnsureSnapshotAsync(string barePath, string commit, string destDir, string? subdir = null, bool forceFresh = false)
@@ -102,9 +102,9 @@ public sealed class GitFetcher
         if (!forceFresh && Directory.Exists(destDir) && Directory.EnumerateFileSystemEntries(destDir).Any())
             return;
 
-        Directory.CreateDirectory(LuxHome.TmpRoot);
-        var tarPath = Path.Combine(LuxHome.TmpRoot, $"lux-{Guid.NewGuid():N}.tar");
-        var stageDir = Path.Combine(LuxHome.TmpRoot, $"lux-stage-{Guid.NewGuid():N}");
+        Directory.CreateDirectory(NebraHome.TmpRoot);
+        var tarPath = Path.Combine(NebraHome.TmpRoot, $"nebra-{Guid.NewGuid():N}.tar");
+        var stageDir = Path.Combine(NebraHome.TmpRoot, $"nebra-stage-{Guid.NewGuid():N}");
 
         try
         {

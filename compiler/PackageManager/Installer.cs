@@ -1,6 +1,6 @@
-using Lux.Configuration;
+using Nebra.Configuration;
 
-namespace Lux.PackageManager;
+namespace Nebra.PackageManager;
 
 public sealed class InstallOptions
 {
@@ -33,9 +33,9 @@ public sealed class InstallOptions
 }
 
 /// <summary>
-/// Top-level orchestrator for <c>lux install</c>. Resolves the dependency graph starting
+/// Top-level orchestrator for <c>nebra install</c>. Resolves the dependency graph starting
 /// from the project manifest, fetches each package into the global store, writes the
-/// lockfile and links everything into <c>lux_modules/</c>.
+/// lockfile and links everything into <c>nebra_modules/</c>.
 /// </summary>
 public sealed class Installer
 {
@@ -49,11 +49,11 @@ public sealed class Installer
             return 1;
         }
 
-        Directory.CreateDirectory(LuxHome.StoreRoot);
-        Directory.CreateDirectory(LuxHome.GitCacheRoot);
+        Directory.CreateDirectory(NebraHome.StoreRoot);
+        Directory.CreateDirectory(NebraHome.GitCacheRoot);
 
-        var lockPath = Path.Combine(projectDir, "lux.lock");
-        var modulesDir = Path.Combine(projectDir, "lux_modules");
+        var lockPath = Path.Combine(projectDir, "nebra.lock");
+        var modulesDir = Path.Combine(projectDir, "nebra_modules");
         var existing = Lockfile.Load(lockPath);
 
         var roots = BuildRootSet(config, opts.IncludeDev);
@@ -79,7 +79,7 @@ public sealed class Installer
                 if (already.Spec != spec.Raw)
                     await Console.Error.WriteLineAsync(
                         $"warning: '{name}' requested twice with different specs ('{already.Spec}' vs '{spec.Raw}'). " +
-                        "Keeping first. Add a scoped alias (e.g. \"@you/" + name + "\" = ...) in lux.toml to disambiguate.");
+                        "Keeping first. Add a scoped alias (e.g. \"@you/" + name + "\" = ...) in nebra.toml to disambiguate.");
                 continue;
             }
 
@@ -100,7 +100,7 @@ public sealed class Installer
             spinner.Stop($"  resolved {name} -> {locked.Resolved}@{Short(locked.Commit)}{(locked.Version is null ? "" : " (" + locked.Version + ")")}");
 
             var storePath = StorePathOf(locked);
-            var depManifestPath = Path.Combine(storePath, "lux.toml");
+            var depManifestPath = Path.Combine(storePath, "nebra.toml");
             if (File.Exists(depManifestPath))
             {
                 var depCfg = Config.LoadFromFile(depManifestPath);
@@ -192,13 +192,13 @@ public sealed class Installer
             foreach (var line in scriptDeniedNotices) Console.WriteLine(line);
         }
 
-        Console.WriteLine($"Installed {resolved.Count} package(s) into lux_modules/.");
+        Console.WriteLine($"Installed {resolved.Count} package(s) into nebra_modules/.");
         return 0;
     }
 
     private static Config? LoadDepManifest(string storePath)
     {
-        var manifestPath = Path.Combine(storePath, "lux.toml");
+        var manifestPath = Path.Combine(storePath, "nebra.toml");
         return File.Exists(manifestPath) ? Config.LoadFromFile(manifestPath) : null;
     }
 
@@ -262,7 +262,7 @@ public sealed class Installer
             try
             {
                 var locked = await ResolveOneAsync("<pending>", spec, null, opts);
-                var manifestPath = Path.Combine(StorePathOf(locked), "lux.toml");
+                var manifestPath = Path.Combine(StorePathOf(locked), "nebra.toml");
                 var cfg = File.Exists(manifestPath) ? Config.LoadFromFile(manifestPath) : null;
                 declaredName = cfg?.Name;
             }
@@ -274,7 +274,7 @@ public sealed class Installer
         }
         else if (spec.Kind == SpecKind.File)
         {
-            var manifestPath = Path.Combine(Path.GetFullPath(spec.Path!), "lux.toml");
+            var manifestPath = Path.Combine(Path.GetFullPath(spec.Path!), "nebra.toml");
             var cfg = File.Exists(manifestPath) ? Config.LoadFromFile(manifestPath) : null;
             declaredName = cfg?.Name;
         }
@@ -305,7 +305,7 @@ public sealed class Installer
 
         if (!ManifestEditor.AddOrUpdate(configPath, group, declaredName, specString))
         {
-            await Console.Error.WriteLineAsync("error: could not update lux.toml (parse error or missing file)");
+            await Console.Error.WriteLineAsync("error: could not update nebra.toml (parse error or missing file)");
             return 1;
         }
 
@@ -315,10 +315,10 @@ public sealed class Installer
 
     public async Task<int> RemoveAsync(string name, Config config, string projectDir, string configPath, InstallOptions opts)
     {
-        // Direct match against the dep key — what gets stored after `lux add`
+        // Direct match against the dep key — what gets stored after `nebra add`
         // is the package's canonical name from its manifest, NOT what the user
-        // typed. So `lux add my-alias` → entry "actual-pkg = "my-alias"`, and
-        // `lux remove my-alias` would miss without the value-match fallback
+        // typed. So `nebra add my-alias` → entry "actual-pkg = "my-alias"`, and
+        // `nebra remove my-alias` would miss without the value-match fallback
         // below.
         var actualKey = ResolveDepKey(config, name);
         if (actualKey == null)
@@ -333,7 +333,7 @@ public sealed class Installer
 
         if (!ManifestEditor.Remove(configPath, actualKey))
         {
-            await Console.Error.WriteLineAsync("warning: lux.toml was not updated (entry not present in file).");
+            await Console.Error.WriteLineAsync("warning: nebra.toml was not updated (entry not present in file).");
         }
 
         Console.WriteLine(actualKey == name
@@ -346,7 +346,7 @@ public sealed class Installer
     /// Finds which dependency entry matches <paramref name="userInput"/> across
     /// all dep groups. Tries the key first (canonical name), then matches the
     /// raw spec value — so users can remove via the alias they originally
-    /// passed to <c>lux add</c>. Returns null if nothing matches; returns the
+    /// passed to <c>nebra add</c>. Returns null if nothing matches; returns the
     /// canonical key on success.
     /// </summary>
     private static string? ResolveDepKey(Config config, string userInput)
@@ -410,7 +410,7 @@ public sealed class Installer
         var barePath = await _fetcher.EnsureBareCloneAsync(spec);
         var (commit, versionTag) = await ResolveGitRefAsync(barePath, spec);
 
-        var storePath = LuxHome.PackagePath(spec.Host!, spec.Owner!, spec.Repo!, commit);
+        var storePath = NebraHome.PackagePath(spec.Host!, spec.Owner!, spec.Repo!, commit);
         await _fetcher.EnsureSnapshotAsync(barePath, commit, storePath, spec.Subdir);
 
         var integrity = GitFetcher.ComputeIntegrity(storePath);
@@ -510,7 +510,7 @@ public sealed class Installer
     private async Task EnsureStorePopulatedAsync(LockedPackage locked, PackageSpec spec)
     {
         if (spec.Kind != SpecKind.Git) return;
-        var storePath = LuxHome.PackagePath(spec.Host!, spec.Owner!, spec.Repo!, locked.Commit);
+        var storePath = NebraHome.PackagePath(spec.Host!, spec.Owner!, spec.Repo!, locked.Commit);
         if (Directory.Exists(storePath) && Directory.EnumerateFileSystemEntries(storePath).Any())
             return;
         var barePath = await _fetcher.EnsureBareCloneAsync(spec);
@@ -531,7 +531,7 @@ public sealed class Installer
         var slash = rest.IndexOf('/');
         var owner = rest[..slash];
         var repo = rest[(slash + 1)..];
-        return LuxHome.PackagePath(host, owner, repo, locked.Commit);
+        return NebraHome.PackagePath(host, owner, repo, locked.Commit);
     }
 
     private static void PruneStaleLinks(string modulesDir, IEnumerable<string> keep)
@@ -560,15 +560,15 @@ public sealed class Installer
     private static void EnsureGitignore(string projectDir)
     {
         var gi = Path.Combine(projectDir, ".gitignore");
-        const string line = "lux_modules/";
+        const string line = "nebra_modules/";
         if (!File.Exists(gi))
         {
             File.WriteAllText(gi, line + "\n");
             return;
         }
         var content = File.ReadAllText(gi);
-        if (content.Contains("lux_modules/", StringComparison.Ordinal) ||
-            content.Contains("lux_modules", StringComparison.Ordinal))
+        if (content.Contains("nebra_modules/", StringComparison.Ordinal) ||
+            content.Contains("nebra_modules", StringComparison.Ordinal))
             return;
         if (!content.EndsWith('\n')) content += "\n";
         content += line + "\n";

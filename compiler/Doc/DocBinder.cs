@@ -1,6 +1,6 @@
-using Lux.IR;
+using Nebra.IR;
 
-namespace Lux.Doc;
+namespace Nebra.Doc;
 
 /// <summary>
 /// Walks an <see cref="IRScript"/> and attaches a <see cref="DocComment"/> to

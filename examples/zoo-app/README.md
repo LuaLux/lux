@@ -1,7 +1,7 @@
 # zoo-app
 
 The consumer in the `examples/` triple. Pulls in
-[`lux-strings`](../lux-strings) and [`lua-math`](../lua-math) through the
+[`nebra-strings`](../nebra-strings) and [`lua-math`](../lua-math) through the
 package manager (file dependencies) and exercises the import / module / type
 system end to end.
 
@@ -9,26 +9,26 @@ system end to end.
 
 | | |
 |-|-|
-| **Lux → Lux import** | `import { trim, padLeft, startsWith } from "lux-strings"` resolves to the linked Lux source and compiles to `require("lux-strings")`. |
-| **Sub-module import** | `import { capitalize } from "lux-strings/case"` resolves to `lux_modules/lux-strings/case.lua`. |
-| **Lua → Lux import via .d.lux** | `import { lerp, clamp, vec2 } from "lua-math"` finds the `declare module "lua-math"` block in `init.d.lux`; the type-checker uses it while the generated code falls through to the real `init.lua`. |
+| **Nebra → Nebra import** | `import { trim, padLeft, startsWith } from "nebra-strings"` resolves to the linked Nebra source and compiles to `require("nebra-strings")`. |
+| **Sub-module import** | `import { capitalize } from "nebra-strings/case"` resolves to `nebra_modules/nebra-strings/case.lua`. |
+| **Lua → Nebra import via .d.neb** | `import { lerp, clamp, vec2 } from "lua-math"` finds the `declare module "lua-math"` block in `init.d.neb`; the type-checker uses it while the generated code falls through to the real `init.lua`. |
 | **Cross-package types** | `Vec2` (declared in lua-math) flows through `length2` and stays type-safe in zoo-app. |
-| **Local file import** | `import { formatLabel, padCols } from "utils"` picks up the sibling `src/utils.lux` — no package-manager wiring needed. |
-| **Local folder-as-module** | `import { kinds } from "animals"` resolves to `src/animals/init.lux` because the folder has an `init.lux`. |
-| **Local submodule import** | `import { makeCat } from "animals/cat"` resolves to `src/animals/cat.lux` — a file inside a folder, addressable with a slash. |
+| **Local file import** | `import { formatLabel, padCols } from "utils"` picks up the sibling `src/utils.neb` — no package-manager wiring needed. |
+| **Local folder-as-module** | `import { kinds } from "animals"` resolves to `src/animals/init.neb` because the folder has an `init.neb`. |
+| **Local submodule import** | `import { makeCat } from "animals/cat"` resolves to `src/animals/cat.neb` — a file inside a folder, addressable with a slash. |
 
 ## Run it
 
 ```bash
-# 1. Build the Lux library so its .lua files exist alongside the sources.
+# 1. Build the Nebra library so its .lua files exist alongside the sources.
 #    (lua-math already ships its init.lua, no build needed.)
-cd ../lux-strings && lux build
+cd ../nebra-strings && nebra build
 
-# 2. Wire the file deps into lux_modules/.
-cd ../zoo-app && lux install
+# 2. Wire the file deps into nebra_modules/.
+cd ../zoo-app && nebra install
 
 # 3. Compile + execute via the embedded runtime.
-lux run
+nebra run
 ```
 
 Expected output:

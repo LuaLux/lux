@@ -1,0 +1,341 @@
+{
+  "$schema": "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
+  "name": "Nebra",
+  "scopeName": "source.nebra",
+  "patterns": [
+    { "include": "#comments" },
+    { "include": "#strings" },
+    { "include": "#annotations" },
+    { "include": "#numbers" },
+    { "include": "#constants" },
+    { "include": "#keywords" },
+    { "include": "#types" },
+    { "include": "#declarations" },
+    { "include": "#function-calls" },
+    { "include": "#operators" },
+    { "include": "#variables" }
+  ],
+  "repository": {
+    "comments": {
+      "patterns": [
+        {
+          "name": "comment.block.documentation.nebra",
+          "begin": "---\\[\\[",
+          "end": "\\]\\]",
+          "patterns": [
+            { "include": "#doc-tags" }
+          ]
+        },
+        {
+          "name": "comment.block.nebra",
+          "begin": "--\\[(=*)\\[",
+          "end": "\\]\\1\\]"
+        },
+        {
+          "name": "comment.line.documentation.nebra",
+          "begin": "---",
+          "end": "$",
+          "patterns": [
+            { "include": "#doc-tags" }
+          ]
+        },
+        {
+          "name": "comment.line.double-dash.nebra",
+          "match": "--.*$"
+        }
+      ]
+    },
+    "doc-tags": {
+      "patterns": [
+        {
+          "name": "storage.type.class.luadoc.nebra",
+          "match": "@(param|return|type|class|field|see|throws|since|deprecated|module|generic|alias)\\b"
+        }
+      ]
+    },
+    "strings": {
+      "patterns": [
+        {
+          "name": "string.quoted.double.nebra",
+          "begin": "\"",
+          "end": "\"",
+          "patterns": [
+            { "include": "#string-escapes" }
+          ]
+        },
+        {
+          "name": "string.quoted.single.nebra",
+          "begin": "'",
+          "end": "'",
+          "patterns": [
+            { "include": "#string-escapes" }
+          ]
+        },
+        {
+          "name": "string.interpolated.nebra",
+          "begin": "`",
+          "end": "`",
+          "patterns": [
+            { "include": "#string-escapes" },
+            {
+              "name": "meta.interpolation.nebra",
+              "begin": "\\{",
+              "end": "\\}",
+              "beginCaptures": {
+                "0": { "name": "punctuation.section.embedded.begin.nebra" }
+              },
+              "endCaptures": {
+                "0": { "name": "punctuation.section.embedded.end.nebra" }
+              },
+              "patterns": [
+                { "include": "$self" }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "string.quoted.other.long.nebra",
+          "begin": "\\[(=*)\\[",
+          "end": "\\]\\1\\]"
+        }
+      ]
+    },
+    "string-escapes": {
+      "patterns": [
+        {
+          "name": "constant.character.escape.nebra",
+          "match": "\\\\(?:[abfnrtv\\\\\"'`\\n]|x[0-9A-Fa-f]{1,2}|z|\\d{1,3}|u\\{[0-9A-Fa-f]+\\})"
+        }
+      ]
+    },
+    "annotations": {
+      "patterns": [
+        {
+          "name": "meta.annotation.nebra",
+          "begin": "(@)([A-Za-z_]\\w*)",
+          "beginCaptures": {
+            "1": { "name": "punctuation.definition.annotation.nebra" },
+            "2": { "name": "entity.name.function.decorator.nebra" }
+          },
+          "end": "(?<=\\))|(?=[\\s\\S])",
+          "patterns": [
+            {
+              "begin": "\\(",
+              "end": "\\)",
+              "beginCaptures": {
+                "0": { "name": "punctuation.section.parens.begin.nebra" }
+              },
+              "endCaptures": {
+                "0": { "name": "punctuation.section.parens.end.nebra" }
+              },
+              "patterns": [
+                { "include": "$self" }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    "numbers": {
+      "patterns": [
+        {
+          "name": "constant.numeric.hex.nebra",
+          "match": "\\b0[xX][0-9a-fA-F](?:[0-9a-fA-F_]*[0-9a-fA-F])?(?:\\.[0-9a-fA-F]+)?(?:[pP][+-]?[0-9]+)?\\b"
+        },
+        {
+          "name": "constant.numeric.binary.nebra",
+          "match": "\\b0[bB][01](?:[01_]*[01])?\\b"
+        },
+        {
+          "name": "constant.numeric.float.nebra",
+          "match": "\\b[0-9](?:[0-9_]*[0-9])?\\.[0-9](?:[0-9_]*[0-9])?(?:[eE][+-]?[0-9]+)?\\b"
+        },
+        {
+          "name": "constant.numeric.integer.nebra",
+          "match": "\\b[0-9](?:[0-9_]*[0-9])?(?:[eE][+-]?[0-9]+)?\\b"
+        }
+      ]
+    },
+    "constants": {
+      "patterns": [
+        {
+          "name": "constant.language.boolean.nebra",
+          "match": "\\b(true|false)\\b"
+        },
+        {
+          "name": "constant.language.nil.nebra",
+          "match": "\\bnil\\b"
+        },
+        {
+          "name": "variable.language.self.nebra",
+          "match": "\\bself\\b"
+        },
+        {
+          "name": "variable.language.super.nebra",
+          "match": "\\bsuper\\b"
+        }
+      ]
+    },
+    "keywords": {
+      "patterns": [
+        {
+          "name": "keyword.control.flow.nebra",
+          "match": "\\b(if|then|else|elseif|end|for|in|while|do|repeat|until|break|return|goto|continue|defer|guard)\\b"
+        },
+        {
+          "name": "keyword.control.match.nebra",
+          "match": "\\b(match|case|when)\\b"
+        },
+        {
+          "name": "keyword.control.import.nebra",
+          "match": "\\b(import|export|from|as|module)\\b"
+        },
+        {
+          "name": "keyword.control.async.nebra",
+          "match": "\\b(async|await)\\b"
+        },
+        {
+          "name": "storage.modifier.nebra",
+          "match": "\\b(local|mut|const|static|protected|abstract|override|declare|meta)\\b"
+        },
+        {
+          "name": "storage.type.nebra",
+          "match": "\\b(function|class|interface|enum|extends|extend|implements|operator|constructor|new)\\b"
+        },
+        {
+          "name": "keyword.operator.logical.word.nebra",
+          "match": "\\b(and|or|not)\\b"
+        },
+        {
+          "name": "keyword.operator.type.nebra",
+          "match": "\\b(is|as|typeof|instanceof)\\b"
+        }
+      ]
+    },
+    "types": {
+      "patterns": [
+        {
+          "name": "support.type.primitive.nebra",
+          "match": "\\b(string|number|boolean|any|void|never)\\b"
+        },
+        {
+          "match": "(:)\\s*([A-Za-z_]\\w*)",
+          "captures": {
+            "1": { "name": "punctuation.separator.type.nebra" },
+            "2": { "name": "entity.name.type.nebra" }
+          }
+        },
+        {
+          "match": "\\b(extends|implements|is|as)\\s+([A-Z][\\w]*)",
+          "captures": {
+            "1": { "name": "keyword.operator.type.nebra" },
+            "2": { "name": "entity.name.type.nebra" }
+          }
+        },
+        {
+          "match": "(<)([A-Z][\\w]*(?:\\s*,\\s*[A-Z][\\w]*)*)(>)",
+          "captures": {
+            "1": { "name": "punctuation.definition.typeparameters.begin.nebra" },
+            "2": { "name": "entity.name.type.parameter.nebra" },
+            "3": { "name": "punctuation.definition.typeparameters.end.nebra" }
+          }
+        }
+      ]
+    },
+    "declarations": {
+      "patterns": [
+        {
+          "match": "\\b(function)\\s+([A-Za-z_][\\w]*(?:[.:][A-Za-z_][\\w]*)*)",
+          "captures": {
+            "1": { "name": "storage.type.function.nebra" },
+            "2": { "name": "entity.name.function.nebra" }
+          }
+        },
+        {
+          "match": "\\b(class|interface|enum)\\s+([A-Za-z_]\\w*)",
+          "captures": {
+            "1": { "name": "storage.type.nebra" },
+            "2": { "name": "entity.name.type.class.nebra" }
+          }
+        },
+        {
+          "match": "\\b(import)\\s+(\\*)\\s+(as)\\s+([A-Za-z_]\\w*)",
+          "captures": {
+            "1": { "name": "keyword.control.import.nebra" },
+            "2": { "name": "keyword.operator.nebra" },
+            "3": { "name": "keyword.control.import.nebra" },
+            "4": { "name": "variable.other.namespace.nebra" }
+          }
+        }
+      ]
+    },
+    "function-calls": {
+      "patterns": [
+        {
+          "match": "\\b([A-Za-z_]\\w*)\\s*(?=\\()",
+          "captures": {
+            "1": { "name": "entity.name.function.call.nebra" }
+          }
+        },
+        {
+          "match": "(?<=[.:])([A-Za-z_]\\w*)\\s*(?=\\()",
+          "captures": {
+            "1": { "name": "entity.name.function.method.nebra" }
+          }
+        }
+      ]
+    },
+    "operators": {
+      "patterns": [
+        {
+          "name": "keyword.operator.assignment.nebra",
+          "match": "(?:\\+\\+|~~|\\+=|-=|\\*=|/=|%=|\\^=|\\.\\.=|=)"
+        },
+        {
+          "name": "keyword.operator.comparison.nebra",
+          "match": "==|~=|!=|<=|>=|<(?![A-Za-z_])|>(?![A-Za-z_])"
+        },
+        {
+          "name": "keyword.operator.logical.nebra",
+          "match": "&&|\\|\\||!(?!=)"
+        },
+        {
+          "name": "keyword.operator.range.nebra",
+          "match": "\\.\\.\\."
+        },
+        {
+          "name": "keyword.operator.concat.nebra",
+          "match": "\\.\\."
+        },
+        {
+          "name": "keyword.operator.arithmetic.nebra",
+          "match": "\\+|-|\\*|/|%|\\^|#"
+        },
+        {
+          "name": "keyword.operator.optional.nebra",
+          "match": "\\?\\.|\\?"
+        },
+        {
+          "name": "keyword.operator.nonnull.nebra",
+          "match": "(?<=[\\w)\\]])!(?![=\\w])"
+        }
+      ]
+    },
+    "variables": {
+      "patterns": [
+        {
+          "match": "(?<=[.:])([A-Za-z_]\\w*)",
+          "captures": {
+            "1": { "name": "variable.other.property.nebra" }
+          }
+        },
+        {
+          "match": "\\b([A-Z][\\w]*)\\b",
+          "captures": {
+            "1": { "name": "entity.name.type.nebra" }
+          }
+        }
+      ]
+    }
+  }
+}

@@ -1,12 +1,12 @@
-using Lux.IR;
+using Nebra.IR;
 using OmniSharp.Extensions.LanguageServer.Protocol;
 using OmniSharp.Extensions.LanguageServer.Protocol.Client.Capabilities;
 using OmniSharp.Extensions.LanguageServer.Protocol.Document;
 using OmniSharp.Extensions.LanguageServer.Protocol.Models;
 
-namespace Lux.LPS.Handlers;
+namespace Nebra.LPS.Handlers;
 
-public sealed class ReferencesHandler(LuxWorkspace workspace) : ReferencesHandlerBase
+public sealed class ReferencesHandler(NebraWorkspace workspace) : ReferencesHandlerBase
 {
     public override Task<LocationContainer?> Handle(ReferenceParams request, CancellationToken ct)
     {
@@ -27,7 +27,7 @@ public sealed class ReferencesHandler(LuxWorkspace workspace) : ReferencesHandle
             .Select(nr => new Location
             {
                 Uri = DocumentUri.Parse(result.Uri),
-                Range = LuxWorkspace.SpanToRange(nr.Span)
+                Range = NebraWorkspace.SpanToRange(nr.Span)
             })
             .ToList();
 
@@ -39,7 +39,7 @@ public sealed class ReferencesHandler(LuxWorkspace workspace) : ReferencesHandle
             locations.Insert(0, new Location
             {
                 Uri = DocumentUri.Parse(result.Uri),
-                Range = LuxWorkspace.SpanToRange(declNode.Span)
+                Range = NebraWorkspace.SpanToRange(declNode.Span)
             });
         }
 
@@ -51,7 +51,7 @@ public sealed class ReferencesHandler(LuxWorkspace workspace) : ReferencesHandle
     {
         return new ReferenceRegistrationOptions
         {
-            DocumentSelector = TextDocumentSelector.ForLanguage("lux")
+            DocumentSelector = TextDocumentSelector.ForLanguage("nebra")
         };
     }
 }

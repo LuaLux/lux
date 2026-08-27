@@ -1,6 +1,6 @@
-using Lux.Diagnostics;
+using Nebra.Diagnostics;
 
-namespace Lux.IR;
+namespace Nebra.IR;
 
 public class IRScript(NodeID id, TextSpan span) : Node(id, span)
 {

@@ -1,0 +1,10 @@
+name = "zoo-app"
+version = "0.1.0"
+target = "5.4"
+source = "src"
+output = "out"
+entry = "main.neb"
+
+[dependencies]
+nebra-strings = "file:../nebra-strings"
+lua-math = "file:../lua-math"

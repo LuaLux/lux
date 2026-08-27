@@ -1,4 +1,4 @@
-namespace Lux.Configuration;
+namespace Nebra.Configuration;
 
 public sealed class ScriptsSection
 {
@@ -8,13 +8,13 @@ public sealed class ScriptsSection
 
     /// <summary>
     /// Lifecycle hook run after a package is fetched but before it is linked into
-    /// <c>lux_modules/</c>. Default off; opt-in via <c>lux install --allow-scripts</c>.
+    /// <c>nebra_modules/</c>. Default off; opt-in via <c>nebra install --allow-scripts</c>.
     /// </summary>
     public List<string> PreInstall { get; set; } = [];
 
     /// <summary>
-    /// Lifecycle hook run after a package has been linked into <c>lux_modules/</c>.
-    /// Default off; opt-in via <c>lux install --allow-scripts</c>.
+    /// Lifecycle hook run after a package has been linked into <c>nebra_modules/</c>.
+    /// Default off; opt-in via <c>nebra install --allow-scripts</c>.
     /// </summary>
     public List<string> PostInstall { get; set; } = [];
 

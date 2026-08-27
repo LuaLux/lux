@@ -1,4 +1,4 @@
-﻿namespace Lux.Diagnostics;
+﻿namespace Nebra.Diagnostics;
 
 /// <summary>
 /// The actual diagnotics of the compiler. Each diagnostic has a code that is used to identify the specific diagnostic.

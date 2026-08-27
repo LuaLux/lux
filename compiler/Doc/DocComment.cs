@@ -1,4 +1,4 @@
-namespace Lux.Doc;
+namespace Nebra.Doc;
 
 /// <summary>
 /// A parsed LuaCATS-style documentation comment attached to a declaration.

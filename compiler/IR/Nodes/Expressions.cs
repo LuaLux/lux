@@ -1,6 +1,6 @@
-using Lux.Diagnostics;
+using Nebra.Diagnostics;
 
-namespace Lux.IR;
+namespace Nebra.IR;
 
 public sealed class NilLiteralExpr(NodeID id, TextSpan span) : Expr(id, span);
 

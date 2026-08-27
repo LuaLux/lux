@@ -1,6 +1,6 @@
 using System.Text;
 
-namespace Lux.Doc;
+namespace Nebra.Doc;
 
 /// <summary>
 /// Renders a <see cref="DocComment"/> as Markdown for LSP <c>Hover</c>,
@@ -92,7 +92,7 @@ public static class DocMarkdown
             sb.AppendLine("**Example:**");
             foreach (var ex in doc.Examples)
             {
-                sb.AppendLine("```lux");
+                sb.AppendLine("```nebra");
                 sb.AppendLine(ex);
                 sb.AppendLine("```");
             }

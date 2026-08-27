@@ -1,8 +1,8 @@
-namespace Lux.IR;
+namespace Nebra.IR;
 
 internal partial class IRVisitor
 {
-    public override Node VisitFunctionDecl(LuxParser.FunctionDeclContext context)
+    public override Node VisitFunctionDecl(NebraParser.FunctionDeclContext context)
     {
         var (namePath, methodName) = VisitFuncNameContent(context.funcName());
         var (parameters, returnType, body, ret) = VisitFuncBodyContent(context.funcBody());
@@ -14,7 +14,7 @@ internal partial class IRVisitor
         return decl;
     }
 
-    public override Node VisitLocalFunctionDecl(LuxParser.LocalFunctionDeclContext context)
+    public override Node VisitLocalFunctionDecl(NebraParser.LocalFunctionDeclContext context)
     {
         var (parameters, returnType, body, ret) = VisitFuncBodyContent(context.funcBody());
         var isAsync = context.ASYNC() != null;
@@ -25,7 +25,7 @@ internal partial class IRVisitor
         return decl;
     }
 
-    public override Node VisitLocalDecl(LuxParser.LocalDeclContext context)
+    public override Node VisitLocalDecl(NebraParser.LocalDeclContext context)
     {
         var vars = VisitAttribNameListContent(context.attribNameList());
         var values = context.exprList()?.expr().Select(e => (Expr)Visit(e)).ToList() ?? [];
@@ -35,7 +35,7 @@ internal partial class IRVisitor
         return decl;
     }
 
-    public override Node VisitDeclareStat(LuxParser.DeclareStatContext context)
+    public override Node VisitDeclareStat(NebraParser.DeclareStatContext context)
     {
         var annotations = VisitAnnotationListContent(context.annotationList());
         var body = (Decl)Visit(context.declareBody());
@@ -62,7 +62,7 @@ internal partial class IRVisitor
         }
     }
 
-    public override Node VisitDeclareFunction(LuxParser.DeclareFunctionContext context)
+    public override Node VisitDeclareFunction(NebraParser.DeclareFunctionContext context)
     {
         var (namePath, methodName) = VisitFuncNameContent(context.funcName());
         var (parameters, returnType) = VisitFuncSignatureContent(context.funcSignature());
@@ -73,13 +73,13 @@ internal partial class IRVisitor
         return decl;
     }
 
-    public override Node VisitDeclareVariable(LuxParser.DeclareVariableContext context)
+    public override Node VisitDeclareVariable(NebraParser.DeclareVariableContext context)
     {
         var typeRef = (TypeRef)Visit(context.typeAnnotation().typeExpr());
         return new DeclareVariableDecl(NewNodeID, SpanFromCtx(context), NameRefFromTerm(context.NAME()), typeRef);
     }
 
-    public override Node VisitDeclareModule(LuxParser.DeclareModuleContext context)
+    public override Node VisitDeclareModule(NebraParser.DeclareModuleContext context)
     {
         var moduleName = NameRefFromString(context.str());
         var members = new List<Decl>();
@@ -90,7 +90,7 @@ internal partial class IRVisitor
         return new DeclareModuleDecl(NewNodeID, SpanFromCtx(context), moduleName, members);
     }
 
-    public override Node VisitModuleDeclareFunction(LuxParser.ModuleDeclareFunctionContext context)
+    public override Node VisitModuleDeclareFunction(NebraParser.ModuleDeclareFunctionContext context)
     {
         var (namePath, methodName) = VisitFuncNameContent(context.funcName());
         var (parameters, returnType) = VisitFuncSignatureContent(context.funcSignature());
@@ -102,7 +102,7 @@ internal partial class IRVisitor
         return decl;
     }
 
-    public override Node VisitModuleDeclareVariable(LuxParser.ModuleDeclareVariableContext context)
+    public override Node VisitModuleDeclareVariable(NebraParser.ModuleDeclareVariableContext context)
     {
         var typeRef = (TypeRef)Visit(context.typeAnnotation().typeExpr());
         var decl = new DeclareVariableDecl(NewNodeID, SpanFromCtx(context), NameRefFromTerm(context.NAME()), typeRef);
@@ -110,7 +110,7 @@ internal partial class IRVisitor
         return decl;
     }
 
-    public override Node VisitEnumDecl(LuxParser.EnumDeclContext context)
+    public override Node VisitEnumDecl(NebraParser.EnumDeclContext context)
     {
         var name = NameRefFromTerm(context.NAME());
         var members = new List<EnumMember>();
@@ -127,7 +127,7 @@ internal partial class IRVisitor
         return enumDecl;
     }
 
-    public override Node VisitDeclareEnum(LuxParser.DeclareEnumContext context)
+    public override Node VisitDeclareEnum(NebraParser.DeclareEnumContext context)
     {
         var name = NameRefFromTerm(context.NAME());
         var members = new List<EnumMember>();
@@ -142,7 +142,7 @@ internal partial class IRVisitor
         return new EnumDecl(NewNodeID, SpanFromCtx(context), name, members, isDeclare: true);
     }
 
-    public override Node VisitModuleDeclareEnum(LuxParser.ModuleDeclareEnumContext context)
+    public override Node VisitModuleDeclareEnum(NebraParser.ModuleDeclareEnumContext context)
     {
         var name = NameRefFromTerm(context.NAME());
         var members = new List<EnumMember>();
@@ -159,7 +159,7 @@ internal partial class IRVisitor
         return ed;
     }
 
-    public override Node VisitDeclareClass(LuxParser.DeclareClassContext context)
+    public override Node VisitDeclareClass(NebraParser.DeclareClassContext context)
     {
         var name = NameRefFromTerm(context.NAME());
         var classRefs = context.classRef();
@@ -199,7 +199,7 @@ internal partial class IRVisitor
         {
             switch (member)
             {
-                case LuxParser.DeclareClassFieldMemberContext field:
+                case NebraParser.DeclareClassFieldMemberContext field:
                 {
                     var isLocal = field.LOCAL() != null;
                     var isStatic = field.STATIC() != null;
@@ -213,7 +213,7 @@ internal partial class IRVisitor
                     fields.Add(fnode);
                     break;
                 }
-                case LuxParser.DeclareClassMethodMemberContext method:
+                case NebraParser.DeclareClassMethodMemberContext method:
                 {
                     var isLocal = method.LOCAL() != null;
                     var isStatic = method.STATIC() != null;
@@ -230,14 +230,14 @@ internal partial class IRVisitor
                     methods.Add(cmNode);
                     break;
                 }
-                case LuxParser.DeclareClassConstructorMemberContext ctor:
+                case NebraParser.DeclareClassConstructorMemberContext ctor:
                 {
                     var (parameters, _) = VisitFuncSignatureContent(ctor.funcSignature());
                     constructor = new ClassConstructorNode(parameters, [], null, SpanFromCtx(ctor));
                     constructor.Annotations = VisitAnnotationListContent(ctor.annotationList());
                     break;
                 }
-                case LuxParser.DeclareClassOperatorMemberContext opMember:
+                case NebraParser.DeclareClassOperatorMemberContext opMember:
                 {
                     var (parameters, returnType) = VisitFuncSignatureContent(opMember.funcSignature());
                     var symText = opMember.operatorSymbol().GetText();
@@ -257,7 +257,7 @@ internal partial class IRVisitor
                     methods.Add(opMethodNode);
                     break;
                 }
-                case LuxParser.DeclareClassAccessorMemberContext accessor:
+                case NebraParser.DeclareClassAccessorMemberContext accessor:
                 {
                     var kindName = accessor.NAME(0).GetText();
                     var propName = NameRefFromTerm(accessor.NAME(1));
@@ -279,7 +279,7 @@ internal partial class IRVisitor
         return decl;
     }
 
-    public override Node VisitDeclareInterface(LuxParser.DeclareInterfaceContext context)
+    public override Node VisitDeclareInterface(NebraParser.DeclareInterfaceContext context)
     {
         var name = NameRefFromTerm(context.NAME());
         var classRefs = context.classRef();
@@ -305,7 +305,7 @@ internal partial class IRVisitor
         {
             switch (member)
             {
-                case LuxParser.InterfaceFieldMemberContext field:
+                case NebraParser.InterfaceFieldMemberContext field:
                 {
                     var fieldName = NameRefFromTerm(field.NAME());
                     var typeAnn = (TypeRef)Visit(field.typeAnnotation().typeExpr());
@@ -314,7 +314,7 @@ internal partial class IRVisitor
                     fields.Add(fnode);
                     break;
                 }
-                case LuxParser.InterfaceMethodMemberContext method:
+                case NebraParser.InterfaceMethodMemberContext method:
                 {
                     var isAsync = method.ASYNC() != null;
                     var methodName = NameRefFromTerm(method.NAME());
@@ -335,7 +335,7 @@ internal partial class IRVisitor
         return ifaceDecl;
     }
 
-    public override Node VisitModuleDeclareClass(LuxParser.ModuleDeclareClassContext context)
+    public override Node VisitModuleDeclareClass(NebraParser.ModuleDeclareClassContext context)
     {
         var name = NameRefFromTerm(context.NAME());
         var classRefs = context.classRef();
@@ -375,7 +375,7 @@ internal partial class IRVisitor
         {
             switch (member)
             {
-                case LuxParser.DeclareClassFieldMemberContext field:
+                case NebraParser.DeclareClassFieldMemberContext field:
                 {
                     var isLocal = field.LOCAL() != null;
                     var isStatic = field.STATIC() != null;
@@ -389,7 +389,7 @@ internal partial class IRVisitor
                     fields.Add(fnode);
                     break;
                 }
-                case LuxParser.DeclareClassMethodMemberContext method:
+                case NebraParser.DeclareClassMethodMemberContext method:
                 {
                     var isLocal = method.LOCAL() != null;
                     var isStatic = method.STATIC() != null;
@@ -406,14 +406,14 @@ internal partial class IRVisitor
                     methods.Add(cmNode);
                     break;
                 }
-                case LuxParser.DeclareClassConstructorMemberContext ctor:
+                case NebraParser.DeclareClassConstructorMemberContext ctor:
                 {
                     var (parameters, _) = VisitFuncSignatureContent(ctor.funcSignature());
                     constructor = new ClassConstructorNode(parameters, [], null, SpanFromCtx(ctor));
                     constructor.Annotations = VisitAnnotationListContent(ctor.annotationList());
                     break;
                 }
-                case LuxParser.DeclareClassOperatorMemberContext opMember:
+                case NebraParser.DeclareClassOperatorMemberContext opMember:
                 {
                     var (parameters, returnType) = VisitFuncSignatureContent(opMember.funcSignature());
                     var symText = opMember.operatorSymbol().GetText();
@@ -433,7 +433,7 @@ internal partial class IRVisitor
                     methods.Add(opMethodNode);
                     break;
                 }
-                case LuxParser.DeclareClassAccessorMemberContext accessor:
+                case NebraParser.DeclareClassAccessorMemberContext accessor:
                 {
                     var kindName = accessor.NAME(0).GetText();
                     var propName = NameRefFromTerm(accessor.NAME(1));
@@ -456,7 +456,7 @@ internal partial class IRVisitor
         return declMod;
     }
 
-    public override Node VisitModuleDeclareInterface(LuxParser.ModuleDeclareInterfaceContext context)
+    public override Node VisitModuleDeclareInterface(NebraParser.ModuleDeclareInterfaceContext context)
     {
         var name = NameRefFromTerm(context.NAME());
         var classRefs = context.classRef();
@@ -482,7 +482,7 @@ internal partial class IRVisitor
         {
             switch (member)
             {
-                case LuxParser.InterfaceFieldMemberContext field:
+                case NebraParser.InterfaceFieldMemberContext field:
                 {
                     var fieldName = NameRefFromTerm(field.NAME());
                     var typeAnn = (TypeRef)Visit(field.typeAnnotation().typeExpr());
@@ -491,7 +491,7 @@ internal partial class IRVisitor
                     fields.Add(fnode);
                     break;
                 }
-                case LuxParser.InterfaceMethodMemberContext method:
+                case NebraParser.InterfaceMethodMemberContext method:
                 {
                     var isAsync = method.ASYNC() != null;
                     var methodName = NameRefFromTerm(method.NAME());
@@ -513,7 +513,7 @@ internal partial class IRVisitor
         return ifaceModDecl;
     }
 
-    public override Node VisitClassDecl(LuxParser.ClassDeclContext context)
+    public override Node VisitClassDecl(NebraParser.ClassDeclContext context)
     {
         var name = NameRefFromTerm(context.NAME());
         var classRefs = context.classRef();
@@ -553,7 +553,7 @@ internal partial class IRVisitor
         {
             switch (member)
             {
-                case LuxParser.ClassFieldMemberContext field:
+                case NebraParser.ClassFieldMemberContext field:
                 {
                     var isLocal = field.LOCAL() != null;
                     var isStatic = field.STATIC() != null;
@@ -568,7 +568,7 @@ internal partial class IRVisitor
                     fields.Add(fieldNode);
                     break;
                 }
-                case LuxParser.ClassMethodMemberContext method:
+                case NebraParser.ClassMethodMemberContext method:
                 {
                     var isLocal = method.LOCAL() != null;
                     var isStatic = method.STATIC() != null;
@@ -584,7 +584,7 @@ internal partial class IRVisitor
                     methods.Add(regMethodNode);
                     break;
                 }
-                case LuxParser.ClassAbstractMethodMemberContext absMethod:
+                case NebraParser.ClassAbstractMethodMemberContext absMethod:
                 {
                     var isProtected = absMethod.PROTECTED() != null;
                     var isAsync = absMethod.ASYNC() != null;
@@ -597,14 +597,14 @@ internal partial class IRVisitor
                     methods.Add(absMethodNode);
                     break;
                 }
-                case LuxParser.ClassConstructorMemberContext ctor:
+                case NebraParser.ClassConstructorMemberContext ctor:
                 {
                     var (parameters, _, body, ret) = VisitFuncBodyContent(ctor.funcBody());
                     constructor = new ClassConstructorNode(parameters, body, ret, SpanFromCtx(ctor));
                     constructor.Annotations = VisitAnnotationListContent(ctor.annotationList());
                     break;
                 }
-                case LuxParser.ClassAccessorMemberContext accessor:
+                case NebraParser.ClassAccessorMemberContext accessor:
                 {
                     var isOverride = accessor.OVERRIDE() != null;
                     var kindName = accessor.NAME(0).GetText();
@@ -616,7 +616,7 @@ internal partial class IRVisitor
                     accessors.Add(accNode);
                     break;
                 }
-                case LuxParser.ClassOperatorMemberContext opMember:
+                case NebraParser.ClassOperatorMemberContext opMember:
                 {
                     var (parameters, returnType, body, ret) = VisitFuncBodyContent(opMember.funcBody());
                     var symText = opMember.operatorSymbol().GetText();
@@ -648,7 +648,7 @@ internal partial class IRVisitor
         return regularDecl;
     }
 
-    public override Node VisitExtendDecl(LuxParser.ExtendDeclContext context)
+    public override Node VisitExtendDecl(NebraParser.ExtendDeclContext context)
     {
         // typeExpr is null when the extend head failed to parse (e.g. `extend function`);
         // keep a null target and let later passes report the error without crashing.
@@ -669,7 +669,7 @@ internal partial class IRVisitor
         return new ExtendDecl(NewNodeID, SpanFromCtx(context), target, methods);
     }
 
-    public override Node VisitInterfaceDecl(LuxParser.InterfaceDeclContext context)
+    public override Node VisitInterfaceDecl(NebraParser.InterfaceDeclContext context)
     {
         var name = NameRefFromTerm(context.NAME());
         var classRefs = context.classRef();
@@ -695,7 +695,7 @@ internal partial class IRVisitor
         {
             switch (member)
             {
-                case LuxParser.InterfaceFieldMemberContext field:
+                case NebraParser.InterfaceFieldMemberContext field:
                 {
                     var fieldName = NameRefFromTerm(field.NAME());
                     var typeAnn = (TypeRef)Visit(field.typeAnnotation().typeExpr());
@@ -704,7 +704,7 @@ internal partial class IRVisitor
                     fields.Add(ifaceField);
                     break;
                 }
-                case LuxParser.InterfaceMethodMemberContext method:
+                case NebraParser.InterfaceMethodMemberContext method:
                 {
                     var isAsync = method.ASYNC() != null;
                     var methodName = NameRefFromTerm(method.NAME());
@@ -716,7 +716,7 @@ internal partial class IRVisitor
                     methods.Add(imNode);
                     break;
                 }
-                case LuxParser.InterfaceDefaultMethodMemberContext method:
+                case NebraParser.InterfaceDefaultMethodMemberContext method:
                 {
                     var isAsync = method.ASYNC() != null;
                     var methodName = NameRefFromTerm(method.NAME());

@@ -1,4 +1,4 @@
-﻿namespace Lux.Diagnostics;
+﻿namespace Nebra.Diagnostics;
 
 /// <summary>
 /// The diagnostic level is used to indicate the severity of a diagnostic. It is used to determine how a diagnostic

@@ -1,13 +1,13 @@
 using System.Net;
 using System.Text;
 
-namespace Lux.Doc;
+namespace Nebra.Doc;
 
 /// <summary>
 /// Renders a <see cref="DocSite"/> into a browsable static HTML site:
 /// <c>index.html</c> + one page per module under <c>html/&lt;name&gt;.html</c>,
 /// shared CSS in <c>html/assets/style.css</c>. No JS, no external assets.
-/// Source-code blocks keep their <c>lux</c> language hint for downstream
+/// Source-code blocks keep their <c>nebra</c> language hint for downstream
 /// highlighters that hook the page later.
 /// </summary>
 public sealed class HtmlDocRenderer
@@ -80,7 +80,7 @@ public sealed class HtmlDocRenderer
             {
                 sb.Append("<section class=\"symbol\" id=\"").Append(Esc(SafeId(symbol.Name))).AppendLine("\">");
                 sb.Append("<h3><code>").Append(Esc(symbol.Name)).AppendLine("</code></h3>");
-                sb.Append("<pre class=\"signature\"><code class=\"language-lux\">")
+                sb.Append("<pre class=\"signature\"><code class=\"language-nebra\">")
                   .Append(Esc(symbol.Signature))
                   .AppendLine("</code></pre>");
 
@@ -123,7 +123,7 @@ public sealed class HtmlDocRenderer
                 if (modParts.Count > 0)
                     sb.Append("<p class=\"modifiers\">").Append(Esc(string.Join(" ", modParts))).AppendLine("</p>");
 
-                sb.Append("<pre class=\"signature\"><code class=\"language-lux\">")
+                sb.Append("<pre class=\"signature\"><code class=\"language-nebra\">")
                   .Append(Esc(member.Signature))
                   .AppendLine("</code></pre>");
 
@@ -182,7 +182,7 @@ public sealed class HtmlDocRenderer
         {
             sb.AppendLine("<h6>Example</h6>");
             foreach (var ex in doc.Examples)
-                sb.Append("<pre><code class=\"language-lux\">").Append(Esc(ex)).AppendLine("</code></pre>");
+                sb.Append("<pre><code class=\"language-nebra\">").Append(Esc(ex)).AppendLine("</code></pre>");
         }
 
         if (!string.IsNullOrEmpty(doc.Since))

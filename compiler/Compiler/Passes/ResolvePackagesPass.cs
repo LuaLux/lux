@@ -1,13 +1,13 @@
-using Lux.PackageManager;
+using Nebra.PackageManager;
 
-namespace Lux.Compiler.Passes;
+namespace Nebra.Compiler.Passes;
 
 /// <summary>
-/// Build-scoped pass that enumerates installed packages from <c>lux_modules/</c> and
+/// Build-scoped pass that enumerates installed packages from <c>nebra_modules/</c> and
 /// stashes the result in <see cref="PassContext.Cache"/> under
 /// <see cref="InstalledPackages.CacheKey"/>. Consumed by later passes that want to
 /// auto-discover types, annotation plugins or module code without requiring explicit
-/// entries in <c>lux.toml</c>.
+/// entries in <c>nebra.toml</c>.
 /// </summary>
 public sealed class ResolvePackagesPass() : Pass(PassName, PassScope.PerBuild)
 {

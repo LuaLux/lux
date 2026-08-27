@@ -1,7 +1,7 @@
-namespace Lux.Configuration;
+namespace Nebra.Configuration;
 
 /// <summary>
-/// The [test] section of <see cref="Config"/>. Tunes the <c>lux test</c> discovery
+/// The [test] section of <see cref="Config"/>. Tunes the <c>nebra test</c> discovery
 /// pipeline: which directories are scanned for test files and which filename
 /// patterns count as tests.
 /// </summary>
@@ -18,7 +18,7 @@ public sealed class TestSection
     /// of the <see cref="Dirs"/> is always picked up; anywhere else, the filename
     /// must end with one of these suffixes (case-insensitive).
     /// </summary>
-    public List<string> Patterns { get; set; } = ["_test.lux", ".test.lux"];
+    public List<string> Patterns { get; set; } = ["_test.neb", ".test.neb"];
 
     /// <summary>
     /// Suppresses the per-test tick output, leaving only the summary on stdout.

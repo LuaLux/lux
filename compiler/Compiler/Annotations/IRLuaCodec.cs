@@ -1,14 +1,14 @@
 using System.Collections;
 using System.Reflection;
-using Lux.Diagnostics;
-using Lux.IR;
+using Nebra.Diagnostics;
+using Nebra.IR;
 
-namespace Lux.Compiler.Annotations;
+namespace Nebra.Compiler.Annotations;
 
 /// <summary>
 /// Reflection-based serialization of IR <see cref="Node"/> subtrees to and from
 /// plain C# object trees (<see cref="Dictionary{TKey,TValue}"/> / <see cref="List{T}"/> /
-/// primitives), which <see cref="LuxRuntime"/> can push into a Lua state as nested
+/// primitives), which <see cref="NebraRuntime"/> can push into a Lua state as nested
 /// tables. Used by the <c>ApplyAnnotationsPass</c> so annotation scripts can receive
 /// the IR of their target declaration, transform it, and return a modified IR that
 /// the pass splices back into the parent block.

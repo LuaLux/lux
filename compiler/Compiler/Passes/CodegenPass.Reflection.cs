@@ -1,18 +1,18 @@
 using System.Text;
-using Lux.Compiler.Codegen;
-using Lux.Configuration;
-using Lux.IR;
-using Type = Lux.IR.Type;
+using Nebra.Compiler.Codegen;
+using Nebra.Configuration;
+using Nebra.IR;
+using Type = Nebra.IR.Type;
 
-namespace Lux.Compiler.Passes;
+namespace Nebra.Compiler.Passes;
 
 public sealed partial class CodegenPass
 {
     private const string ReflectPrelude =
         """
         if not _G.reflect then
-          local R = _G.__lux_reflect or {}
-          _G.__lux_reflect = R
+          local R = _G.__nebra_reflect or {}
+          _G.__nebra_reflect = R
           local reflect = {}
           function reflect.get(id) return R[id] end
           function reflect.all() local t = {} for _, d in pairs(R) do t[#t + 1] = d end return t end
@@ -25,8 +25,8 @@ public sealed partial class CodegenPass
           function reflect.typeOf(v)
             if type(v) == "table" then
               local mt = getmetatable(v)
-              if mt and mt.__lux then return R[mt.__lux] end
-              if v.__lux then return R[v.__lux] end
+              if mt and mt.__nebra then return R[mt.__nebra] end
+              if v.__nebra then return R[v.__nebra] end
             end
             return { kind = "primitive", name = type(v) }
           end
@@ -62,14 +62,14 @@ public sealed partial class CodegenPass
         if (ctx.Config.Reflection.Mode == ReflectionMode.None) return;
         gen.Write(ReflectPrelude);
         gen.NewLine();
-        gen.Write("local __lux = _G.__lux_reflect;");
+        gen.Write("local __nebra = _G.__nebra_reflect;");
         gen.NewLine();
     }
 
     /// <summary>
     /// Emits the reflection descriptor for a single top-level declaration, immediately after it is
     /// emitted, so later user code (including reflection queries) sees the registered metadata and
-    /// <c>.__lux</c> stamp. Each descriptor is a Lua table literal written verbatim.
+    /// <c>.__nebra</c> stamp. Each descriptor is a Lua table literal written verbatim.
     /// </summary>
     private void EmitReflectionFor(PassContext ctx, PackageContext pkg, LuaGenerator gen, Stmt stmt)
     {
@@ -195,7 +195,7 @@ public sealed partial class CodegenPass
         if (anns != null) parts.Add($"annotations = {anns}");
         parts.Add($"ref = {runtime}");
 
-        return $"__lux[{Quote(id)}] = {{ {string.Join(", ", parts)} }};\n{runtime}.__lux = {Quote(id)};";
+        return $"__nebra[{Quote(id)}] = {{ {string.Join(", ", parts)} }};\n{runtime}.__nebra = {Quote(id)};";
     }
 
     private string? InterfaceMeta(PassContext ctx, PackageContext pkg, InterfaceDecl id)
@@ -214,7 +214,7 @@ public sealed partial class CodegenPass
         var anns = AnnotationsLiteral(id.Annotations);
         if (anns != null) parts.Add($"annotations = {anns}");
 
-        return $"__lux[{Quote(NamedId(it))}] = {{ {string.Join(", ", parts)} }};";
+        return $"__nebra[{Quote(NamedId(it))}] = {{ {string.Join(", ", parts)} }};";
     }
 
     private string? EnumMeta(PassContext ctx, PackageContext pkg, EnumDecl ed)
@@ -233,7 +233,7 @@ public sealed partial class CodegenPass
         if (anns != null) parts.Add($"annotations = {anns}");
         parts.Add($"ref = {runtime}");
 
-        return $"__lux[{Quote(id)}] = {{ {string.Join(", ", parts)} }};\n{runtime}.__lux = {Quote(id)};";
+        return $"__nebra[{Quote(id)}] = {{ {string.Join(", ", parts)} }};\n{runtime}.__nebra = {Quote(id)};";
     }
 
     private string? FunctionMeta(PassContext ctx, PackageContext pkg, FunctionDecl fd)
@@ -252,7 +252,7 @@ public sealed partial class CodegenPass
         if (anns != null) parts.Add($"annotations = {anns}");
         parts.Add($"ref = {runtime}");
 
-        return $"__lux[{Quote(ReflectId(ctx, name.Name))}] = {{ {string.Join(", ", parts)} }};";
+        return $"__nebra[{Quote(ReflectId(ctx, name.Name))}] = {{ {string.Join(", ", parts)} }};";
     }
 
     private string? VariableMeta(PassContext ctx, PackageContext pkg, AttribVar v)
@@ -261,7 +261,7 @@ public sealed partial class CodegenPass
         if (sym.Type == TypID.Invalid || !ctx.Types.GetByID(sym.Type, out var t)) return null;
         var runtime = ResolveName(ctx, pkg, v.Name);
 
-        return $"__lux[{Quote(ReflectId(ctx, v.Name.Name))}] = {{ name = {Quote(v.Name.Name)}, kind = \"variable\", " +
+        return $"__nebra[{Quote(ReflectId(ctx, v.Name.Name))}] = {{ name = {Quote(v.Name.Name)}, kind = \"variable\", " +
                $"type = {TypeDesc(ctx, t)}, ref = function() return {runtime} end }};";
     }
 

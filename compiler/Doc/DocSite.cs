@@ -1,4 +1,4 @@
-namespace Lux.Doc;
+namespace Nebra.Doc;
 
 /// <summary>
 /// Static, format-agnostic model of a documentation site: every module known
@@ -8,7 +8,7 @@ namespace Lux.Doc;
 /// </summary>
 public sealed class DocSite
 {
-    public string ProjectName { get; init; } = "lux project";
+    public string ProjectName { get; init; } = "nebra project";
     public string? ProjectVersion { get; init; }
     public List<DocModule> Modules { get; init; } = [];
 }

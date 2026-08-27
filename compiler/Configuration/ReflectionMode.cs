@@ -1,7 +1,7 @@
-using Lux.Configuration.Converter;
+using Nebra.Configuration.Converter;
 using Tomlyn.Serialization;
 
-namespace Lux.Configuration;
+namespace Nebra.Configuration;
 
 /// <summary>
 /// Controls how much runtime reflection metadata the compiler emits into the output.

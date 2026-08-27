@@ -1,4 +1,4 @@
-using Lux.IR;
+using Nebra.IR;
 using MediatR;
 using Newtonsoft.Json.Linq;
 using OmniSharp.Extensions.LanguageServer.Protocol;
@@ -7,7 +7,7 @@ using OmniSharp.Extensions.LanguageServer.Protocol.Document;
 using OmniSharp.Extensions.LanguageServer.Protocol.Models;
 using OmniSharp.Extensions.LanguageServer.Protocol.Workspace;
 
-namespace Lux.LPS.Handlers;
+namespace Nebra.LPS.Handlers;
 
 /// <summary>
 /// Provides quick fixes and refactor actions: import suggestions for unresolved
@@ -15,7 +15,7 @@ namespace Lux.LPS.Handlers;
 /// abstract checks, and a 'Compile this file' command pointing at the server-side
 /// <see cref="ExecuteCompileCommandHandler"/>.
 /// </summary>
-public sealed class CodeActionHandler(LuxWorkspace workspace) : CodeActionHandlerBase
+public sealed class CodeActionHandler(NebraWorkspace workspace) : CodeActionHandlerBase
 {
     public override Task<CommandOrCodeActionContainer?> Handle(CodeActionParams request, CancellationToken ct)
     {
@@ -37,7 +37,7 @@ public sealed class CodeActionHandler(LuxWorkspace workspace) : CodeActionHandle
             Command = new Command
             {
                 Title = "Compile this file",
-                Name = "lux.compileFile",
+                Name = "nebra.compileFile",
                 Arguments = new JArray(uri)
             }
         }));
@@ -289,7 +289,7 @@ public sealed class CodeActionHandler(LuxWorkspace workspace) : CodeActionHandle
     {
         return new CodeActionRegistrationOptions
         {
-            DocumentSelector = TextDocumentSelector.ForLanguage("lux"),
+            DocumentSelector = TextDocumentSelector.ForLanguage("nebra"),
             CodeActionKinds = new Container<CodeActionKind>(CodeActionKind.QuickFix, CodeActionKind.Source),
             ResolveProvider = false
         };
@@ -298,10 +298,10 @@ public sealed class CodeActionHandler(LuxWorkspace workspace) : CodeActionHandle
 
 /// <summary>
 /// Server-side handler for <c>workspace/executeCommand</c> with command name
-/// <c>lux.compileFile</c>. Compiles the URI passed as the first argument and
+/// <c>nebra.compileFile</c>. Compiles the URI passed as the first argument and
 /// reports the outcome through the language server's window/showMessage channel.
 /// </summary>
-public sealed class ExecuteCompileCommandHandler(LuxWorkspace workspace) : ExecuteCommandHandlerBase
+public sealed class ExecuteCompileCommandHandler(NebraWorkspace workspace) : ExecuteCommandHandlerBase
 {
     public override Task<Unit> Handle(ExecuteCommandParams request, CancellationToken ct)
     {
@@ -332,7 +332,7 @@ public sealed class ExecuteCompileCommandHandler(LuxWorkspace workspace) : Execu
     {
         return new ExecuteCommandRegistrationOptions
         {
-            Commands = new Container<string>("lux.compileFile")
+            Commands = new Container<string>("nebra.compileFile")
         };
     }
 }

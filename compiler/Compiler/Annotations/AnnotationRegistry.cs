@@ -1,8 +1,8 @@
-namespace Lux.Compiler.Annotations;
+namespace Nebra.Compiler.Annotations;
 
 /// <summary>
 /// Target kinds an annotation can be applied to. Must match the <c>AnnotationTarget</c>
-/// enum declared in the Lux stdlib (see <c>stdlib/annotation.d.sel</c>).
+/// enum declared in the Nebra stdlib (see <c>stdlib/annotation.d.sel</c>).
 /// </summary>
 public enum AnnotationTargetKind
 {

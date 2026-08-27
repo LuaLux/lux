@@ -1,11 +1,11 @@
-namespace Lux.Configuration;
+namespace Nebra.Configuration;
 
 /// <summary>
 /// Execution-context flags for symbols and source files (Garry's-Mod / FiveM /
 /// nanos-style multiplayer split). A symbol annotated with <c>@side(...)</c>
 /// carries one or more of these bits — typically just one of
 /// <see cref="Client"/>, <see cref="Server"/>, or <see cref="Shared"/>. A file
-/// in <c>lux.toml</c>'s <c>[sides]</c> mapping carries its accepted bits — a
+/// in <c>nebra.toml</c>'s <c>[sides]</c> mapping carries its accepted bits — a
 /// server file usually accepts <c>server | shared</c>.
 /// </summary>
 /// <remarks>
@@ -29,7 +29,7 @@ public enum Side
 public static class SideExtensions
 {
     /// <summary>
-    /// Parses a side name as written in <c>@side(...)</c> or <c>lux.toml</c>.
+    /// Parses a side name as written in <c>@side(...)</c> or <c>nebra.toml</c>.
     /// Recognised: <c>client</c>, <c>server</c>, <c>shared</c>, <c>all</c>.
     /// Case-insensitive. Returns <see cref="Side.None"/> for unknown names so
     /// callers can decide whether to report a diagnostic or fall back.

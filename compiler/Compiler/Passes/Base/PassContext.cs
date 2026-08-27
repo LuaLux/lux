@@ -1,8 +1,8 @@
-﻿using Lux.Configuration;
-using Lux.Diagnostics;
-using Lux.IR;
+﻿using Nebra.Configuration;
+using Nebra.Diagnostics;
+using Nebra.IR;
 
-namespace Lux.Compiler.Passes;
+namespace Nebra.Compiler.Passes;
 
 /// <summary>
 /// The pass context is the context in which a pass is executed. It contains all the information that a pass needs to execute.

@@ -1,6 +1,6 @@
 ﻿using System.Collections.Concurrent;
 
-namespace Lux.Diagnostics;
+namespace Nebra.Diagnostics;
 
 /// <summary>
 /// The diagnostics bag is a collection of diagnostics that can be used to report errors, warnings, and informational messages during the compilation process.

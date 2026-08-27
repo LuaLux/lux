@@ -1,0 +1,39 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <OutputType>Exe</OutputType>
+        <TargetFramework>net10.0</TargetFramework>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <Nullable>enable</Nullable>
+        <AssemblyName>nebra</AssemblyName>
+        <RootNamespace>Nebra</RootNamespace>
+        <Version>0.0.0-dev</Version>
+        <IncludeSourceRevisionInInformationalVersion>false</IncludeSourceRevisionInInformationalVersion>
+    </PropertyGroup>
+
+    <ItemGroup>
+      <PackageReference Include="Antlr4.Runtime.Standard" Version="4.13.1" />
+      <PackageReference Include="OmniSharp.Extensions.LanguageServer" Version="0.19.9" />
+      <PackageReference Include="Tomlyn" Version="2.3.0" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <ProjectReference Include="..\runtime\Nebra.Runtime.csproj" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <EmbeddedResource Include="stdlib\std.d.neb" />
+      <EmbeddedResource Include="stdlib\http.d.neb" />
+      <EmbeddedResource Include="stdlib\json.d.neb" />
+      <EmbeddedResource Include="stdlib\fs.d.neb" />
+      <EmbeddedResource Include="stdlib\console.d.neb" />
+      <EmbeddedResource Include="stdlib\reflect.d.neb" />
+      <EmbeddedResource Include="stdlib\project.d.neb" />
+      <EmbeddedResource Include="stdlib\test.d.neb" />
+      <EmbeddedResource Include="stdlib\test_runtime.lua" />
+    </ItemGroup>
+
+    <PropertyGroup>
+        <SatelliteResourceLanguages>en</SatelliteResourceLanguages>
+    </PropertyGroup>
+</Project>

@@ -1,0 +1,33 @@
+--- Aggregator entry point for the runtime test suite. Discovered by `nebra test`
+--- via the `_test.neb` suffix; calling each module's `run()` registers its
+--- assertions as `nebra:test` tests at dofile time.
+
+import { run as runLiterals } from "01_literals"
+import { run as runOperators } from "02_operators"
+import { run as runStrings } from "03_strings"
+import { run as runControlFlow } from "04_control_flow"
+import { run as runFunctions } from "05_functions"
+import { run as runTables } from "06_tables_enums"
+import { run as runClasses } from "07_classes"
+import { run as runInterfaces } from "08_interfaces"
+import { run as runMatch } from "09_pattern_matching"
+import { run as runAsync } from "10_async"
+import { run as runGenerics } from "11_generics"
+import { run as runNilability } from "12_nilability"
+import { run as runDeferGuard } from "13_defer_guard"
+import { run as runNever } from "14_never"
+
+runLiterals()
+runOperators()
+runStrings()
+runControlFlow()
+runFunctions()
+runTables()
+runClasses()
+runInterfaces()
+runMatch()
+runAsync()
+runGenerics()
+runNilability()
+runDeferGuard()
+runNever()

@@ -1,7 +1,7 @@
-using Lux.Diagnostics;
-using Lux.IR;
+using Nebra.Diagnostics;
+using Nebra.IR;
 
-namespace Lux.Compiler.Passes;
+namespace Nebra.Compiler.Passes;
 
 public sealed class CheckImmutabilityPass() : Pass(PassName, PassScope.PerFile)
 {

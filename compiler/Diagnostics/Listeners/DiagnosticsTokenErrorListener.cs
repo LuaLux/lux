@@ -1,7 +1,7 @@
 using System.Text.RegularExpressions;
 using Antlr4.Runtime;
 
-namespace Lux.Diagnostics;
+namespace Nebra.Diagnostics;
 
 /// <summary>
 /// Intercepts ANTLR syntax errors and turns their terse, parser-internal wording
@@ -13,7 +13,7 @@ internal sealed partial class DiagnosticsTokenErrorListener(DiagnosticsBag diag,
     public override void SyntaxError(TextWriter output, IRecognizer recognizer, IToken offendingSymbol, int line, int charPositionInLine,
         string msg, RecognitionException e)
     {
-        if (offendingSymbol is CommonToken { Type: LuxParser.Eof })
+        if (offendingSymbol is CommonToken { Type: NebraParser.Eof })
         {
             diag.Report(TextSpan.Of(offendingSymbol, filename), DiagnosticCode.ErrUnexpectedEOF);
             return;

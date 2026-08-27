@@ -1,6 +1,6 @@
-﻿using Lux.Configuration;
+﻿using Nebra.Configuration;
 
-namespace Lux.IR;
+namespace Nebra.IR;
 
 /// <summary>
 /// Represents the kind of symbol. This enum is used to distinguish between different kinds of symbols and to determine
@@ -30,7 +30,7 @@ public enum SymbolFlags
     /// </summary>
     Const = 1 << 0,
     /// <summary>
-    /// Same as <see cref="Const"/> but used in the Lux language to indicate immutability by default as a language design choice.
+    /// Same as <see cref="Const"/> but used in the Nebra language to indicate immutability by default as a language design choice.
     /// This won't generate any code but be used in the semantic analysis phase to enforce immutability.
     /// </summary>
     Immutable = 1 << 1,

@@ -1,4 +1,4 @@
-namespace Lux.Diagnostics;
+namespace Nebra.Diagnostics;
 
 /// <summary>
 /// Optional "what to do" guidance for a <see cref="DiagnosticCode"/>, rendered as a

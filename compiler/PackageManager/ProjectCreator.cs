@@ -1,9 +1,9 @@
 using System.Net.Http;
-using Lux.Compiler;
-using Lux.Configuration;
-using Lux.Runtime;
+using Nebra.Compiler;
+using Nebra.Configuration;
+using Nebra.Runtime;
 
-namespace Lux.PackageManager;
+namespace Nebra.PackageManager;
 
 public sealed class CreateOptions
 {
@@ -14,10 +14,10 @@ public sealed class CreateOptions
 }
 
 /// <summary>
-/// Implements <c>lux create &lt;spec&gt; [dir]</c>: resolves a template source —
-/// either a direct URL pointing at a <c>setup.lux</c>/<c>setup.lua</c> file or a
+/// Implements <c>nebra create &lt;spec&gt; [dir]</c>: resolves a template source —
+/// either a direct URL pointing at a <c>setup.neb</c>/<c>setup.lua</c> file or a
 /// package spec handled by the normal package manager pipeline — materialises it
-/// into a fresh directory, then runs its setup script via <see cref="LuxRuntime"/>.
+/// into a fresh directory, then runs its setup script via <see cref="NebraRuntime"/>.
 /// </summary>
 public sealed class ProjectCreator
 {
@@ -28,7 +28,7 @@ public sealed class ProjectCreator
     {
         if (string.IsNullOrWhiteSpace(specString))
         {
-            await Console.Error.WriteLineAsync("error: missing template specifier. Usage: lux create <spec_or_url> [dir]");
+            await Console.Error.WriteLineAsync("error: missing template specifier. Usage: nebra create <spec_or_url> [dir]");
             return 1;
         }
 
@@ -45,7 +45,7 @@ public sealed class ProjectCreator
             return false;
 
         var path = spec.Split('?', '#')[0];
-        return path.EndsWith(".lux", StringComparison.OrdinalIgnoreCase)
+        return path.EndsWith(".neb", StringComparison.OrdinalIgnoreCase)
             || path.EndsWith(".lua", StringComparison.OrdinalIgnoreCase);
     }
 
@@ -61,8 +61,8 @@ public sealed class ProjectCreator
         }
 
         var fileName = Path.GetFileName(new Uri(url).AbsolutePath);
-        if (string.IsNullOrEmpty(fileName)) fileName = "setup.lux";
-        var tempDir = Path.Combine(Path.GetTempPath(), "lux-create-url-" + Guid.NewGuid().ToString("N")[..8]);
+        if (string.IsNullOrEmpty(fileName)) fileName = "setup.neb";
+        var tempDir = Path.Combine(Path.GetTempPath(), "nebra-create-url-" + Guid.NewGuid().ToString("N")[..8]);
         Directory.CreateDirectory(tempDir);
         var setupPath = Path.Combine(tempDir, fileName);
 
@@ -150,7 +150,7 @@ public sealed class ProjectCreator
 
         if (spec.Kind != SpecKind.Git)
         {
-            await Console.Error.WriteLineAsync("error: unsupported spec type for `lux create`.");
+            await Console.Error.WriteLineAsync("error: unsupported spec type for `nebra create`.");
             return 1;
         }
 
@@ -168,10 +168,10 @@ public sealed class ProjectCreator
             return 1;
         }
 
-        var stagingDir = Path.Combine(Path.GetTempPath(), "lux-create-stage-" + Guid.NewGuid().ToString("N")[..8]);
+        var stagingDir = Path.Combine(Path.GetTempPath(), "nebra-create-stage-" + Guid.NewGuid().ToString("N")[..8]);
         try
         {
-            Directory.CreateDirectory(LuxHome.GitCacheRoot);
+            Directory.CreateDirectory(NebraHome.GitCacheRoot);
 
             Console.WriteLine($"Fetching {specString}...");
             var barePath = await _fetcher.EnsureBareCloneAsync(spec);
@@ -192,12 +192,12 @@ public sealed class ProjectCreator
     }
 
     /// <summary>
-    /// Final step of every `lux create` flow. Receives the populated staging
+    /// Final step of every `nebra create` flow. Receives the populated staging
     /// dir, decides whether to run a setup script or do a bulk copy, and
     /// leaves <paramref name="targetDir"/> containing only what the user
     /// actually wants:
     /// <list type="bullet">
-    ///   <item><description>If staging has a <c>setup.lux</c>/<c>setup.lua</c>, run it with CWD=<paramref name="targetDir"/>
+    ///   <item><description>If staging has a <c>setup.neb</c>/<c>setup.lua</c>, run it with CWD=<paramref name="targetDir"/>
     ///     (which stays empty until the script writes files into it). The template's
     ///     own source files never land in the project.</description></item>
     ///   <item><description>If staging has no setup script, copy staging → target verbatim
@@ -206,9 +206,9 @@ public sealed class ProjectCreator
     /// </summary>
     private static async Task<int> PopulateTargetDirAsync(string stagingDir, string targetDir, CreateOptions opts)
     {
-        var setupLux = Path.Combine(stagingDir, "setup.lux");
+        var setupNebra = Path.Combine(stagingDir, "setup.neb");
         var setupLua = Path.Combine(stagingDir, "setup.lua");
-        string? setupPath = File.Exists(setupLux) ? setupLux
+        string? setupPath = File.Exists(setupNebra) ? setupNebra
                          : File.Exists(setupLua) ? setupLua
                          : null;
 
@@ -237,19 +237,19 @@ public sealed class ProjectCreator
             string luaPath;
             string? tempCompileDir = null;
 
-            if (setupPath.EndsWith(".lux", StringComparison.OrdinalIgnoreCase))
+            if (setupPath.EndsWith(".neb", StringComparison.OrdinalIgnoreCase))
             {
-                tempCompileDir = Path.Combine(Path.GetTempPath(), "lux-setup-" + Guid.NewGuid().ToString("N")[..8]);
+                tempCompileDir = Path.Combine(Path.GetTempPath(), "nebra-setup-" + Guid.NewGuid().ToString("N")[..8]);
                 Directory.CreateDirectory(tempCompileDir);
 
-                var compiler = new LuxCompiler { Config = new Config() };
+                var compiler = new NebraCompiler { Config = new Config() };
                 compiler.AddSource(setupPath);
                 var ok = compiler.Compile();
                 if (!ok)
                 {
                     foreach (var diag in compiler.Diagnostics.Diagnostics)
                         await Console.Error.WriteLineAsync(diag.ToString());
-                    await Console.Error.WriteLineAsync("error: failed to compile setup.lux.");
+                    await Console.Error.WriteLineAsync("error: failed to compile setup.neb.");
                     return 1;
                 }
 
@@ -261,7 +261,7 @@ public sealed class ProjectCreator
                 luaPath = setupPath;
             }
 
-            using var runtime = new LuxRuntime();
+            using var runtime = new NebraRuntime();
             runtime.AddPackagePath(projectDir);
             var success = runtime.RunFile(luaPath);
 
@@ -282,7 +282,7 @@ public sealed class ProjectCreator
         }
     }
 
-    private static async Task WriteCompiledLuaAsync(LuxCompiler compiler, string setupPath, string luaPath)
+    private static async Task WriteCompiledLuaAsync(NebraCompiler compiler, string setupPath, string luaPath)
     {
         foreach (var pkg in compiler.Packages.Values)
         {
@@ -305,7 +305,7 @@ public sealed class ProjectCreator
             }
         }
 
-        throw new InvalidOperationException("setup.lux compiled to no output");
+        throw new InvalidOperationException("setup.neb compiled to no output");
     }
 
     private async Task<string> ResolveGitRefAsync(string barePath, PackageSpec spec)
@@ -362,7 +362,7 @@ public sealed class ProjectCreator
             for (var i = segments.Length - 1; i >= 0; i--)
             {
                 var seg = segments[i];
-                if (seg.EndsWith(".lux", StringComparison.OrdinalIgnoreCase) ||
+                if (seg.EndsWith(".neb", StringComparison.OrdinalIgnoreCase) ||
                     seg.EndsWith(".lua", StringComparison.OrdinalIgnoreCase))
                     continue;
                 return seg;
@@ -370,7 +370,7 @@ public sealed class ProjectCreator
             if (segments.Length >= 2) return segments[^2];
         }
         catch { }
-        return "lux-template";
+        return "nebra-template";
     }
 
     private static void CopyDirectory(string source, string destination)
@@ -384,7 +384,7 @@ public sealed class ProjectCreator
         foreach (var dir in Directory.EnumerateDirectories(source))
         {
             var name = Path.GetFileName(dir);
-            if (name is ".git" or "lux_modules" or "out") continue;
+            if (name is ".git" or "nebra_modules" or "out") continue;
             CopyDirectory(dir, Path.Combine(destination, name));
         }
     }

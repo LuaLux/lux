@@ -1,4 +1,4 @@
-﻿namespace Lux.Compiler.Passes;
+﻿namespace Nebra.Compiler.Passes;
 
 /// <summary>
 /// Represents a compiler pass in an abstract way. A compiler pass is a transformation or analysis that is applied to

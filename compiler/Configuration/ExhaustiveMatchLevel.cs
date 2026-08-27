@@ -1,7 +1,7 @@
-using Lux.Configuration.Converter;
+using Nebra.Configuration.Converter;
 using Tomlyn.Serialization;
 
-namespace Lux.Configuration;
+namespace Nebra.Configuration;
 
 /// <summary>
 /// Strictness level for exhaustive match checking in if/elseif chains that match on a union or enum

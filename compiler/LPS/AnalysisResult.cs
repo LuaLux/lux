@@ -1,8 +1,8 @@
 using Antlr4.Runtime;
-using Lux.Diagnostics;
-using Lux.IR;
+using Nebra.Diagnostics;
+using Nebra.IR;
 
-namespace Lux.LPS;
+namespace Nebra.LPS;
 
 public sealed record ImportedDecl(string FilePath, TextSpan Span, Node DeclNode);
 

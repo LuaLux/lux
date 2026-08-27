@@ -1,7 +1,7 @@
 ﻿using Antlr4.Runtime;
 using Antlr4.Runtime.Tree;
 
-namespace Lux.Diagnostics;
+namespace Nebra.Diagnostics;
 
 /// <summary>
 /// A text span is an object that represents a span of text in a source file. It is used to indicate the location of a diagnostic in the source code.

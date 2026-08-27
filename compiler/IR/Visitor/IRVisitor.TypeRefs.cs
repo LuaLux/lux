@@ -1,6 +1,6 @@
-using Lux.Diagnostics;
+using Nebra.Diagnostics;
 
-namespace Lux.IR;
+namespace Nebra.IR;
 
 internal partial class IRVisitor
 {
@@ -15,25 +15,25 @@ internal partial class IRVisitor
         { "never", TypeKind.PrimitiveNever }
     };
 
-    public override Node VisitBareFunctionType(LuxParser.BareFunctionTypeContext context)
+    public override Node VisitBareFunctionType(NebraParser.BareFunctionTypeContext context)
         => new PrimitiveTypeRef(NewNodeID, SpanFromCtx(context), TypeKind.PrimitiveFunction);
     
-    public override Node VisitUnionType(LuxParser.UnionTypeContext context)
+    public override Node VisitUnionType(NebraParser.UnionTypeContext context)
     {
         var types = context.typeSingle().Select(t => (TypeRef)Visit(t)).ToList();
         if (types.Count == 1) return types[0];
         return new UnionTypeRef(NewNodeID, SpanFromCtx(context), types);
     }
 
-    public override Node VisitPostfixType(LuxParser.PostfixTypeContext context)
+    public override Node VisitPostfixType(NebraParser.PostfixTypeContext context)
     {
         var result = (TypeRef)Visit(context.typeAtom());
         foreach (var suffix in context.typeSuffix())
         {
             result = suffix switch
             {
-                LuxParser.ArraySuffixContext => new ArrayTypeRef(NewNodeID, SpanFromCtx(suffix), result),
-                LuxParser.NullableSuffixContext => new NullableTypeRef(NewNodeID, SpanFromCtx(suffix), result),
+                NebraParser.ArraySuffixContext => new ArrayTypeRef(NewNodeID, SpanFromCtx(suffix), result),
+                NebraParser.NullableSuffixContext => new NullableTypeRef(NewNodeID, SpanFromCtx(suffix), result),
                 _ => throw new InvalidOperationException($"Unknown type suffix: {suffix.GetType().Name}")
             };
         }
@@ -41,10 +41,10 @@ internal partial class IRVisitor
         return result;
     }
 
-    public override Node VisitNilType(LuxParser.NilTypeContext context)
+    public override Node VisitNilType(NebraParser.NilTypeContext context)
         => new PrimitiveTypeRef(NewNodeID, SpanFromCtx(context), TypeKind.PrimitiveNil);
 
-    public override Node VisitNamedType(LuxParser.NamedTypeContext context)
+    public override Node VisitNamedType(NebraParser.NamedTypeContext context)
     {
         var nameText = context.NAME().GetText();
         var typeArgList = context.typeArgList();
@@ -78,40 +78,40 @@ internal partial class IRVisitor
         return new NamedTypeRef(NewNodeID, SpanFromCtx(context), NameRefFromTerm(context.NAME()));
     }
 
-    public override Node VisitVariadicType(LuxParser.VariadicTypeContext context)
+    public override Node VisitVariadicType(NebraParser.VariadicTypeContext context)
         => new VariadicTypeRef(NewNodeID, SpanFromCtx(context), (TypeRef)Visit(context.typeSingle()));
 
-    public override Node VisitFuncType(LuxParser.FuncTypeContext context)
+    public override Node VisitFuncType(NebraParser.FuncTypeContext context)
         => Visit(context.functionType());
 
-    public override Node VisitTableType_(LuxParser.TableType_Context context)
+    public override Node VisitTableType_(NebraParser.TableType_Context context)
         => Visit(context.tableType());
 
-    public override Node VisitGroupedOrTupleType(LuxParser.GroupedOrTupleTypeContext context)
+    public override Node VisitGroupedOrTupleType(NebraParser.GroupedOrTupleTypeContext context)
     {
         var types = context.typeExpr().Select(t => (TypeRef)Visit(t)).ToList();
         if (types.Count == 1) return types[0];
         return new TupleTypeRef(NewNodeID, SpanFromCtx(context), types);
     }
 
-    public override Node VisitFunctionType(LuxParser.FunctionTypeContext context)
+    public override Node VisitFunctionType(NebraParser.FunctionTypeContext context)
     {
         var paramTypes = context.typeList()?.typeExpr().Select(t => (TypeRef)Visit(t)).ToList() ?? [];
         var returnType = (TypeRef)Visit(context.typeExpr());
         return new FunctionTypeRef(NewNodeID, SpanFromCtx(context), paramTypes, returnType);
     }
 
-    public override Node VisitEmptyTableType(LuxParser.EmptyTableTypeContext context)
+    public override Node VisitEmptyTableType(NebraParser.EmptyTableTypeContext context)
         => new StructTypeRef(NewNodeID, SpanFromCtx(context), []);
 
-    public override Node VisitMapType(LuxParser.MapTypeContext context)
+    public override Node VisitMapType(NebraParser.MapTypeContext context)
     {
         var keyType = (TypeRef)Visit(context.typeExpr(0));
         var valueType = (TypeRef)Visit(context.typeExpr(1));
         return new MapTypeRef(NewNodeID, SpanFromCtx(context), keyType, valueType);
     }
 
-    public override Node VisitStructType(LuxParser.StructTypeContext context)
+    public override Node VisitStructType(NebraParser.StructTypeContext context)
     {
         var fields = context.structField().Select(f => new StructTypeField(
             NameRefFromTerm(f.NAME()),

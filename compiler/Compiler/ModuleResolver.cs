@@ -1,14 +1,14 @@
 using Antlr4.Runtime;
-using Lux.Configuration;
-using Lux.Diagnostics;
-using Lux.IR;
-using Lux.PackageManager;
+using Nebra.Configuration;
+using Nebra.Diagnostics;
+using Nebra.IR;
+using Nebra.PackageManager;
 
-namespace Lux.Compiler;
+namespace Nebra.Compiler;
 
 public enum ModuleKind
 {
-    LuxSource,
+    NebraSource,
     Declaration,
     DeclareModule
 }
@@ -41,7 +41,7 @@ public sealed class ModuleResolver(Config config)
     private ResolvedModule? DoResolve(string moduleName, string? importerPath,
         List<PackageContext> pkgs, DiagnosticsBag diag, IDAlloc<NodeID> nodeAlloc)
     {
-        if (moduleName.EndsWith(".lux"))
+        if (moduleName.EndsWith(".neb"))
             moduleName = moduleName[..^4];
 
         var found = FindDeclareModule(moduleName, pkgs);
@@ -51,36 +51,36 @@ public sealed class ModuleResolver(Config config)
 
         foreach (var dir in searchDirs)
         {
-            var dlux = Path.Combine(dir, moduleName + ".d.lux");
-            if (File.Exists(dlux))
+            var dnebra = Path.Combine(dir, moduleName + ".d.neb");
+            if (File.Exists(dnebra))
             {
-                var file = LoadAndInject(dlux, pkgs, diag, nodeAlloc);
+                var file = LoadAndInject(dnebra, pkgs, diag, nodeAlloc);
                 if (file != null)
-                    return new ResolvedModule { Kind = ModuleKind.Declaration, File = file, FilePath = dlux };
+                    return new ResolvedModule { Kind = ModuleKind.Declaration, File = file, FilePath = dnebra };
             }
 
-            var lux = Path.Combine(dir, moduleName + ".lux");
-            if (File.Exists(lux))
+            var nebra = Path.Combine(dir, moduleName + ".neb");
+            if (File.Exists(nebra))
             {
-                var file = LoadAndInject(lux, pkgs, diag, nodeAlloc);
+                var file = LoadAndInject(nebra, pkgs, diag, nodeAlloc);
                 if (file != null)
-                    return new ResolvedModule { Kind = ModuleKind.LuxSource, File = file, FilePath = lux };
+                    return new ResolvedModule { Kind = ModuleKind.NebraSource, File = file, FilePath = nebra };
             }
 
-            var dluxIdx = Path.Combine(dir, moduleName, "init.d.lux");
-            if (File.Exists(dluxIdx))
+            var dnebraIdx = Path.Combine(dir, moduleName, "init.d.neb");
+            if (File.Exists(dnebraIdx))
             {
-                var file = LoadAndInject(dluxIdx, pkgs, diag, nodeAlloc);
+                var file = LoadAndInject(dnebraIdx, pkgs, diag, nodeAlloc);
                 if (file != null)
-                    return new ResolvedModule { Kind = ModuleKind.Declaration, File = file, FilePath = dluxIdx };
+                    return new ResolvedModule { Kind = ModuleKind.Declaration, File = file, FilePath = dnebraIdx };
             }
 
-            var luxIdx = Path.Combine(dir, moduleName, "init.lux");
-            if (File.Exists(luxIdx))
+            var nebraIdx = Path.Combine(dir, moduleName, "init.neb");
+            if (File.Exists(nebraIdx))
             {
-                var file = LoadAndInject(luxIdx, pkgs, diag, nodeAlloc);
+                var file = LoadAndInject(nebraIdx, pkgs, diag, nodeAlloc);
                 if (file != null)
-                    return new ResolvedModule { Kind = ModuleKind.LuxSource, File = file, FilePath = luxIdx };
+                    return new ResolvedModule { Kind = ModuleKind.NebraSource, File = file, FilePath = nebraIdx };
             }
         }
 
@@ -166,10 +166,10 @@ public sealed class ModuleResolver(Config config)
         catch { return null; }
 
         var inputStream = new AntlrInputStream(source);
-        var lexer = new LuxLexer(inputStream);
+        var lexer = new NebraLexer(inputStream);
         lexer.RemoveErrorListeners();
         var tokenStream = new CommonTokenStream(lexer);
-        var parser = new LuxParser(tokenStream);
+        var parser = new NebraParser(tokenStream);
         parser.RemoveErrorListeners();
         var visitor = new IRVisitor(filePath, nodeAlloc, diag, config);
         var ir = visitor.Visit(parser.script());

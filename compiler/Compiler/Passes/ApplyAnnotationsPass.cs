@@ -1,13 +1,13 @@
-using Lux.Compiler.Annotations;
-using Lux.Diagnostics;
-using Lux.IR;
-using Lux.Runtime;
+using Nebra.Compiler.Annotations;
+using Nebra.Diagnostics;
+using Nebra.IR;
+using Nebra.Runtime;
 
-namespace Lux.Compiler.Passes;
+namespace Nebra.Compiler.Passes;
 
 /// <summary>
 /// Per-file pass that walks the HIR, finds every declaration carrying compile-time annotations,
-/// and executes them via <see cref="LuxRuntime"/>. Each annotation receives the target declaration
+/// and executes them via <see cref="NebraRuntime"/>. Each annotation receives the target declaration
 /// as a serialized Lua table plus the validated argument dictionary, and may return either a
 /// single replacement node or a list of statements to splice into the enclosing block.
 ///
@@ -145,7 +145,7 @@ public sealed class ApplyAnnotationsPass()
             var codec = new IRLuaCodec();
             var encoded = codec.Encode(current);
 
-            using var runtime = LuxRuntime.CreateSandboxed();
+            using var runtime = NebraRuntime.CreateSandboxed();
             var loadErr = runtime.LoadAndRun(def.CompiledLua, def.Name);
             if (loadErr != null)
             {
@@ -313,7 +313,7 @@ public sealed class ApplyAnnotationsPass()
 
                 if (encoded == null) continue;
 
-                using var runtime = LuxRuntime.CreateSandboxed();
+                using var runtime = NebraRuntime.CreateSandboxed();
                 var loadErr = runtime.LoadAndRun(def.CompiledLua, def.Name);
                 if (loadErr != null)
                 {
@@ -423,7 +423,7 @@ public sealed class ApplyAnnotationsPass()
             var codec = new IRLuaCodec();
             var encoded = codec.Encode(node);
 
-            using var runtime = LuxRuntime.CreateSandboxed();
+            using var runtime = NebraRuntime.CreateSandboxed();
             var loadErr = runtime.LoadAndRun(def.CompiledLua, def.Name);
             if (loadErr != null)
             {
@@ -475,7 +475,7 @@ public sealed class ApplyAnnotationsPass()
                 var codec = new IRLuaCodec();
                 var encoded = codec.Encode(current);
 
-                using var runtime = LuxRuntime.CreateSandboxed();
+                using var runtime = NebraRuntime.CreateSandboxed();
                 var loadErr = runtime.LoadAndRun(def.CompiledLua, def.Name);
                 if (loadErr != null)
                 {

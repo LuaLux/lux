@@ -1,11 +1,11 @@
-using Lux.IR;
+using Nebra.IR;
 using OmniSharp.Extensions.LanguageServer.Protocol.Client.Capabilities;
 using OmniSharp.Extensions.LanguageServer.Protocol.Document;
 using OmniSharp.Extensions.LanguageServer.Protocol.Models;
 
-namespace Lux.LPS.Handlers;
+namespace Nebra.LPS.Handlers;
 
-public sealed class SignatureHelpHandler(LuxWorkspace workspace) : SignatureHelpHandlerBase
+public sealed class SignatureHelpHandler(NebraWorkspace workspace) : SignatureHelpHandlerBase
 {
     public override Task<SignatureHelp?> Handle(SignatureHelpParams request, CancellationToken ct)
     {
@@ -225,7 +225,7 @@ public sealed class SignatureHelpHandler(LuxWorkspace workspace) : SignatureHelp
     /// <summary>
     /// Provides signature help for annotation invocations. Walks the HIR for an
     /// <see cref="Annotation"/> whose argument list contains the cursor, looks
-    /// the annotation up in <see cref="LuxWorkspace.GetAnnotationMeta"/>, and
+    /// the annotation up in <see cref="NebraWorkspace.GetAnnotationMeta"/>, and
     /// renders the <c>meta.params</c> spec as a <see cref="SignatureInformation"/>.
     /// Returns <c>null</c> when the cursor isn't inside an annotation call.
     /// </summary>
@@ -383,7 +383,7 @@ public sealed class SignatureHelpHandler(LuxWorkspace workspace) : SignatureHelp
     {
         return new SignatureHelpRegistrationOptions
         {
-            DocumentSelector = TextDocumentSelector.ForLanguage("lux"),
+            DocumentSelector = TextDocumentSelector.ForLanguage("nebra"),
             TriggerCharacters = new Container<string>("(", ",", "@", "=", " ")
         };
     }

@@ -1,6 +1,6 @@
-using Lux.IR;
+using Nebra.IR;
 
-namespace Lux.Compiler.Passes;
+namespace Nebra.Compiler.Passes;
 
 public sealed class ResolveImportsPass() : Pass(PassName, PassScope.PerBuild)
 {
@@ -48,7 +48,7 @@ public sealed class ResolveImportsPass() : Pass(PassName, PassScope.PerBuild)
 
             ctx.Cache[$"import_resolved:{file.Filename}:{import.Module.Name}"] = resolved;
 
-            if (resolved is { Kind: ModuleKind.LuxSource or ModuleKind.Declaration, File: not null })
+            if (resolved is { Kind: ModuleKind.NebraSource or ModuleKind.Declaration, File: not null })
             {
                 if (!newFiles.Contains(resolved.File))
                     newFiles.Add(resolved.File);
@@ -61,7 +61,7 @@ public sealed class ResolveImportsPass() : Pass(PassName, PassScope.PerBuild)
     /// inside its own sub-scope of the package root. The sub-scope keeps the
     /// library's <c>export</c> names from clashing with the consumer's
     /// <c>import { … }</c> declarations (which BindDeclare put into the package
-    /// root earlier in this pass cycle); <see cref="ResolveFromLuxSource"/>
+    /// root earlier in this pass cycle); <see cref="ResolveFromNebraSource"/>
     /// then walks the sub-scope to copy types onto the import bindings.
     /// </summary>
     private static void BindAndResolveNewFiles(PassContext ctx, List<PreparsedFile> newFiles)
@@ -112,10 +112,10 @@ public sealed class ResolveImportsPass() : Pass(PassName, PassScope.PerBuild)
                     ResolveFromDeclFile(ctx, pkg, sourcePkg, import, resolved.File!);
                     break;
                 }
-                case ModuleKind.LuxSource:
+                case ModuleKind.NebraSource:
                 {
                     var sourcePkg = FindPackageOf(ctx, resolved.File!) ?? pkg;
-                    ResolveFromLuxSource(ctx, pkg, sourcePkg, import, resolved.File!);
+                    ResolveFromNebraSource(ctx, pkg, sourcePkg, import, resolved.File!);
                     break;
                 }
             }
@@ -123,8 +123,8 @@ public sealed class ResolveImportsPass() : Pass(PassName, PassScope.PerBuild)
     }
 
     /// <summary>
-    /// Each <c>.lux</c> source file lives in its own <see cref="PackageContext"/>
-    /// (see <c>LuxCompiler.AddSource</c>), so a cross-file import has to look up
+    /// Each <c>.neb</c> source file lives in its own <see cref="PackageContext"/>
+    /// (see <c>NebraCompiler.AddSource</c>), so a cross-file import has to look up
     /// the source symbol in the EXPORTER's package, not the importer's. This
     /// helper finds the package that owns <paramref name="file"/>.
     /// </summary>
@@ -183,10 +183,10 @@ public sealed class ResolveImportsPass() : Pass(PassName, PassScope.PerBuild)
         ResolveFromTopLevelDeclarations(ctx, pkg, sourcePkg, import, declFile);
     }
 
-    private static void ResolveFromLuxSource(PassContext ctx, PackageContext pkg, PackageContext sourcePkg,
+    private static void ResolveFromNebraSource(PassContext ctx, PackageContext pkg, PackageContext sourcePkg,
         ImportStmt import, PreparsedFile sourceFile)
     {
-        // exports live in the SOURCE file's package (each .lux file gets its
+        // exports live in the SOURCE file's package (each .neb file gets its
         // own package); use sourcePkg for the lookups, pkg for the target.
         var exports = CollectExportedSymbols(sourcePkg, sourceFile);
 

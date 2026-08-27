@@ -1,6 +1,6 @@
-using Lux.Diagnostics;
+using Nebra.Diagnostics;
 
-namespace Lux.IR;
+namespace Nebra.IR;
 
 public abstract class TypeRef(NodeID id, TextSpan span, TypeKind kind) : Node(id, span)
 {

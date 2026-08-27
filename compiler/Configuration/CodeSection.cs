@@ -1,4 +1,4 @@
-﻿namespace Lux.Configuration;
+﻿namespace Nebra.Configuration;
 
 /// <summary>
 /// The [code] section of the <see cref="Config"/>. The code section is used to configure specific parts of the code
@@ -40,7 +40,7 @@ public sealed class CodeSection
 
     /// <summary>
     /// Optional suffix appended to every <c>import</c> path before it is substituted
-    /// into <see cref="ImportStatement"/>. Lux always strips a trailing <c>.lux</c>
+    /// into <see cref="ImportStatement"/>. Nebra always strips a trailing <c>.neb</c>
     /// from the source path first — the writer-visible filename is never legal in
     /// the lowered Lua. Set this to <c>".lua"</c> for runtimes whose loader
     /// requires the extension (e.g. nanos-world's <c>Package.Require("Foo.lua")</c>).

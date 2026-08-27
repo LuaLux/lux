@@ -1,4 +1,4 @@
-namespace Lux.PackageManager;
+namespace Nebra.PackageManager;
 
 /// <summary>
 /// Minimal semver (major.minor.patch[-pre]). Tolerates leading 'v'.

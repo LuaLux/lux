@@ -1,7 +1,7 @@
-using Lux.Configuration;
-using Lux.IR;
+using Nebra.Configuration;
+using Nebra.IR;
 
-namespace Lux.Compiler.Annotations;
+namespace Nebra.Compiler.Annotations;
 
 /// <summary>
 /// Built-in compiler annotations that bypass the user-script

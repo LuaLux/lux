@@ -1,6 +1,6 @@
-using Lux.Configuration;
+using Nebra.Configuration;
 
-namespace Lux.Compiler.Codegen;
+namespace Nebra.Compiler.Codegen;
 
 public enum BitwiseStyle
 {

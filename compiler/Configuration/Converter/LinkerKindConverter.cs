@@ -1,8 +1,8 @@
-using Lux.PackageManager;
+using Nebra.PackageManager;
 using Tomlyn;
 using Tomlyn.Serialization;
 
-namespace Lux.Configuration.Converter;
+namespace Nebra.Configuration.Converter;
 
 internal sealed class LinkerKindConverter : TomlConverter<LinkerKind>
 {

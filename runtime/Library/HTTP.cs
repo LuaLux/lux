@@ -1,10 +1,10 @@
 using System.Text;
 using System.Text.Json;
-using Lux.Runtime.Bindings;
+using Nebra.Runtime.Bindings;
 
-namespace Lux.Runtime.Library;
+namespace Nebra.Runtime.Library;
 
-[LuxExport("http")]
+[NebraExport("http")]
 public sealed class HTTP
 {
     private static readonly HttpClient _sharedClient = new()
@@ -12,28 +12,28 @@ public sealed class HTTP
         Timeout = TimeSpan.FromSeconds(60)
     };
 
-    [LuxExport("get")]
-    public static LuxTable Get(string url, IDictionary<string, object?>? options = null)
+    [NebraExport("get")]
+    public static NebraTable Get(string url, IDictionary<string, object?>? options = null)
         => Request("GET", url, options);
 
-    [LuxExport("post")]
-    public static LuxTable Post(string url, IDictionary<string, object?>? options = null)
+    [NebraExport("post")]
+    public static NebraTable Post(string url, IDictionary<string, object?>? options = null)
         => Request("POST", url, options);
 
-    [LuxExport("put")]
-    public static LuxTable Put(string url, IDictionary<string, object?>? options = null)
+    [NebraExport("put")]
+    public static NebraTable Put(string url, IDictionary<string, object?>? options = null)
         => Request("PUT", url, options);
 
-    [LuxExport("patch")]
-    public static LuxTable Patch(string url, IDictionary<string, object?>? options = null)
+    [NebraExport("patch")]
+    public static NebraTable Patch(string url, IDictionary<string, object?>? options = null)
         => Request("PATCH", url, options);
 
-    [LuxExport("delete")]
-    public static LuxTable Delete(string url, IDictionary<string, object?>? options = null)
+    [NebraExport("delete")]
+    public static NebraTable Delete(string url, IDictionary<string, object?>? options = null)
         => Request("DELETE", url, options);
 
-    [LuxExport("postjson")]
-    public static LuxTable PostJson(string url, object? payload)
+    [NebraExport("postjson")]
+    public static NebraTable PostJson(string url, object? payload)
     {
         var opts = new Dictionary<string, object?> { ["json"] = payload };
         return Request("POST", url, opts);
@@ -46,8 +46,8 @@ public sealed class HTTP
     /// <c>timeout</c> (seconds, number).
     /// Returns a table with <c>status</c>, <c>body</c>, <c>ok</c> and <c>headers</c>.
     /// </summary>
-    [LuxExport("request")]
-    public static LuxTable Request(string method, string url, IDictionary<string, object?>? options = null)
+    [NebraExport("request")]
+    public static NebraTable Request(string method, string url, IDictionary<string, object?>? options = null)
     {
         var req = new HttpRequestMessage(new HttpMethod(method.ToUpperInvariant()), BuildUri(url, options));
 
@@ -114,7 +114,7 @@ public sealed class HTTP
     /// Downloads a file to the given path. Creates intermediate directories.
     /// Returns the number of bytes written.
     /// </summary>
-    [LuxExport("download")]
+    [NebraExport("download")]
     public static long Download(string url, string path)
     {
         var dir = Path.GetDirectoryName(Path.GetFullPath(path));
@@ -130,7 +130,7 @@ public sealed class HTTP
     /// <summary>
     /// Downloads the response body as a string.
     /// </summary>
-    [LuxExport("getString")]
+    [NebraExport("getString")]
     public static string GetString(string url)
         => _sharedClient.GetStringAsync(url).GetAwaiter().GetResult();
 
@@ -153,9 +153,9 @@ public sealed class HTTP
         return ub.Uri;
     }
 
-    private static LuxTable ParseResponseResult(HttpResponseMessage response)
+    private static NebraTable ParseResponseResult(HttpResponseMessage response)
     {
-        var headers = new LuxTable();
+        var headers = new NebraTable();
         foreach (var header in response.Headers)
             headers.Set(header.Key, string.Join(", ", header.Value));
         if (response.Content != null)
@@ -165,7 +165,7 @@ public sealed class HTTP
         }
 
         var status = (int)response.StatusCode;
-        var result = new LuxTable();
+        var result = new NebraTable();
         result.Set("status", status);
         result.Set("ok", status >= 200 && status < 300);
         result.Set("body", response.Content?.ReadAsStringAsync().GetAwaiter().GetResult() ?? "");

@@ -1,6 +1,6 @@
 ﻿using Antlr4.Runtime;
 
-namespace Lux.Diagnostics;
+namespace Nebra.Diagnostics;
 
 /// <summary>
 /// Represents a custom error listener for the ANTLR parsing pipeline to intercept and handle syntax errors during the parsing process.

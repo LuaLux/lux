@@ -1,4 +1,4 @@
-namespace Lux.Configuration;
+namespace Nebra.Configuration;
 
 public sealed class MangleSection
 {

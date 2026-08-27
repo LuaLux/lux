@@ -1,4 +1,4 @@
-﻿namespace Lux.Diagnostics;
+﻿namespace Nebra.Diagnostics;
 
 /// <summary>
 /// The diagnostic category is used to categorize diagnostics. It is used to group diagnostics together into specific

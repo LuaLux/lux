@@ -1,12 +1,12 @@
-using Lux.IR;
+using Nebra.IR;
 using OmniSharp.Extensions.LanguageServer.Protocol;
 using OmniSharp.Extensions.LanguageServer.Protocol.Client.Capabilities;
 using OmniSharp.Extensions.LanguageServer.Protocol.Document;
 using OmniSharp.Extensions.LanguageServer.Protocol.Models;
 
-namespace Lux.LPS.Handlers;
+namespace Nebra.LPS.Handlers;
 
-public sealed class DefinitionHandler(LuxWorkspace workspace) : DefinitionHandlerBase
+public sealed class DefinitionHandler(NebraWorkspace workspace) : DefinitionHandlerBase
 {
     public override Task<LocationOrLocationLinks?> Handle(DefinitionParams request, CancellationToken ct)
     {
@@ -50,7 +50,7 @@ public sealed class DefinitionHandler(LuxWorkspace workspace) : DefinitionHandle
             var loc = new Location
             {
                 Uri = DocumentUri.FromFileSystemPath(imported.FilePath),
-                Range = LuxWorkspace.SpanToRange(imported.Span)
+                Range = NebraWorkspace.SpanToRange(imported.Span)
             };
             return Task.FromResult<LocationOrLocationLinks?>(new LocationOrLocationLinks(loc));
         }
@@ -68,7 +68,7 @@ public sealed class DefinitionHandler(LuxWorkspace workspace) : DefinitionHandle
         var location2 = new Location
         {
             Uri = DocumentUri.Parse(fileUri),
-            Range = LuxWorkspace.SpanToRange(declNode.Span)
+            Range = NebraWorkspace.SpanToRange(declNode.Span)
         };
 
         return Task.FromResult<LocationOrLocationLinks?>(new LocationOrLocationLinks(location2));
@@ -108,15 +108,15 @@ public sealed class DefinitionHandler(LuxWorkspace workspace) : DefinitionHandle
             if (pos.Character < modStart || pos.Character > modEnd) continue;
 
             var moduleName = import.Module.Name;
-            if (moduleName.EndsWith(".lux")) moduleName = moduleName[..^4];
+            if (moduleName.EndsWith(".neb")) moduleName = moduleName[..^4];
 
             var dir = Path.GetDirectoryName(result.FilePath);
             if (dir == null) return null;
 
-            var candidate = Path.GetFullPath(Path.Combine(dir, moduleName + ".lux"));
+            var candidate = Path.GetFullPath(Path.Combine(dir, moduleName + ".neb"));
             if (File.Exists(candidate)) return candidate;
 
-            var dCandidate = Path.GetFullPath(Path.Combine(dir, moduleName + ".d.lux"));
+            var dCandidate = Path.GetFullPath(Path.Combine(dir, moduleName + ".d.neb"));
             if (File.Exists(dCandidate)) return dCandidate;
 
             return null;
@@ -130,7 +130,7 @@ public sealed class DefinitionHandler(LuxWorkspace workspace) : DefinitionHandle
     {
         return new DefinitionRegistrationOptions
         {
-            DocumentSelector = TextDocumentSelector.ForLanguage("lux")
+            DocumentSelector = TextDocumentSelector.ForLanguage("nebra")
         };
     }
 }

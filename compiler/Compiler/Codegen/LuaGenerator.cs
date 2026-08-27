@@ -1,7 +1,7 @@
 using System.Text;
-using Lux.Configuration;
+using Nebra.Configuration;
 
-namespace Lux.Compiler.Codegen;
+namespace Nebra.Compiler.Codegen;
 
 public sealed class LuaGenerator(Config config)
 {
@@ -105,7 +105,7 @@ public sealed class LuaGenerator(Config config)
         if (_helperNames.TryGetValue(key, out var existing))
             return existing;
 
-        var name = "__lux_" + key;
+        var name = "__nebra_" + key;
         _helperNames[key] = name;
 
         if (_emittedHelpers.Add(key))
@@ -236,7 +236,7 @@ public sealed class LuaGenerator(Config config)
 
     public string EmitImport(string modulePath)
     {
-        if (modulePath.EndsWith(".lux", StringComparison.OrdinalIgnoreCase))
+        if (modulePath.EndsWith(".neb", StringComparison.OrdinalIgnoreCase))
             modulePath = modulePath[..^4];
         modulePath += config.Code.ImportExtension;
         var template = config.Code.ImportStatement;

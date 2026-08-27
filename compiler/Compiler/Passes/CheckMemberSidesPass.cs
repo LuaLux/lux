@@ -1,9 +1,9 @@
-using Lux.Configuration;
-using Lux.Diagnostics;
-using Lux.IR;
-using Type = Lux.IR.Type;
+using Nebra.Configuration;
+using Nebra.Diagnostics;
+using Nebra.IR;
+using Type = Nebra.IR.Type;
 
-namespace Lux.Compiler.Passes;
+namespace Nebra.Compiler.Passes;
 
 /// <summary>
 /// Per-file pass that enforces <c>@side</c> on individual class / interface

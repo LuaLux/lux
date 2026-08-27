@@ -1,12 +1,12 @@
-using Lux.IR;
+using Nebra.IR;
 using OmniSharp.Extensions.LanguageServer.Protocol;
 using OmniSharp.Extensions.LanguageServer.Protocol.Client.Capabilities;
 using OmniSharp.Extensions.LanguageServer.Protocol.Document;
 using OmniSharp.Extensions.LanguageServer.Protocol.Models;
 
-namespace Lux.LPS.Handlers;
+namespace Nebra.LPS.Handlers;
 
-public sealed class RenameHandler(LuxWorkspace workspace) : RenameHandlerBase
+public sealed class RenameHandler(NebraWorkspace workspace) : RenameHandlerBase
 {
     public override Task<WorkspaceEdit?> Handle(RenameParams request, CancellationToken ct)
     {
@@ -32,7 +32,7 @@ public sealed class RenameHandler(LuxWorkspace workspace) : RenameHandlerBase
             .Where(nr => nr.Sym == targetSym)
             .Select(nr => new TextEdit
             {
-                Range = LuxWorkspace.SpanToRange(nr.Span),
+                Range = NebraWorkspace.SpanToRange(nr.Span),
                 NewText = request.NewName
             })
             .ToList();
@@ -54,7 +54,7 @@ public sealed class RenameHandler(LuxWorkspace workspace) : RenameHandlerBase
     {
         return new RenameRegistrationOptions
         {
-            DocumentSelector = TextDocumentSelector.ForLanguage("lux"),
+            DocumentSelector = TextDocumentSelector.ForLanguage("nebra"),
             PrepareProvider = true
         };
     }

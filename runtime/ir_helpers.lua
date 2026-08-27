@@ -1,5 +1,5 @@
 -- IR helper factories for annotation apply() scripts.
--- Auto-loaded into the sandboxed LuxRuntime by ApplyAnnotationsPass.
+-- Auto-loaded into the sandboxed NebraRuntime by ApplyAnnotationsPass.
 -- Returned tables use the same wire format that IRLuaCodec expects when decoding.
 -- Discriminator field is "__kind" (chosen to avoid collisions with IR properties
 -- that happen to be named "Kind", e.g. on TypeRef).

@@ -1,7 +1,7 @@
-using Lux.Diagnostics;
-using Lux.IR;
+using Nebra.Diagnostics;
+using Nebra.IR;
 
-namespace Lux.Compiler.Passes;
+namespace Nebra.Compiler.Passes;
 
 /// <summary>
 /// Walks every <see cref="GenericTypeRef"/> in the IR and verifies that each

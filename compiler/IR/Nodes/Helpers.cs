@@ -1,6 +1,6 @@
-using Lux.Diagnostics;
+using Nebra.Diagnostics;
 
-namespace Lux.IR;
+namespace Nebra.IR;
 
 public sealed class Parameter(NodeID id, NameRef name, TypeRef? typeAnnotation, bool isVararg, Expr? defaultValue, TextSpan span) : Node(id, span)
 {
@@ -13,8 +13,8 @@ public sealed class Parameter(NodeID id, NameRef name, TypeRef? typeAnnotation, 
 
 /// <summary>
 /// A compile-time annotation attached to a declaration (e.g. <c>@Memoize(ttl = 60)</c>).
-/// Executed by the <c>ApplyAnnotationsPass</c> which calls into a user-provided Lux/Lua
-/// script via the <c>LuxRuntime</c> to transform the target IR subtree.
+/// Executed by the <c>ApplyAnnotationsPass</c> which calls into a user-provided Nebra/Lua
+/// script via the <c>NebraRuntime</c> to transform the target IR subtree.
 /// </summary>
 public sealed class Annotation(NodeID id, TextSpan span, NameRef name, List<AnnotationArg> args) : Node(id, span)
 {
@@ -108,7 +108,7 @@ public sealed class ClassFieldNode(
     public bool IsProtected { get; } = isProtected;
     public TextSpan Span { get; } = span;
     public List<Annotation> Annotations { get; set; } = [];
-    public Lux.Doc.DocComment? Doc { get; set; }
+    public Nebra.Doc.DocComment? Doc { get; set; }
 }
 
 public sealed class ClassMethodNode(
@@ -136,7 +136,7 @@ public sealed class ClassMethodNode(
     /// <summary>The original operator symbol as written in source (e.g. <c>+</c>, <c>-</c>, <c>..</c>). Null for non-operators.</summary>
     public string? OperatorSymbol { get; } = operatorSymbol;
     public List<Annotation> Annotations { get; set; } = [];
-    public Lux.Doc.DocComment? Doc { get; set; }
+    public Nebra.Doc.DocComment? Doc { get; set; }
 }
 
 public sealed class ClassConstructorNode(
@@ -147,7 +147,7 @@ public sealed class ClassConstructorNode(
     public ReturnStmt? ReturnStmt { get; } = returnStmt;
     public TextSpan Span { get; } = span;
     public List<Annotation> Annotations { get; set; } = [];
-    public Lux.Doc.DocComment? Doc { get; set; }
+    public Nebra.Doc.DocComment? Doc { get; set; }
 }
 
 public enum AccessorKind { Getter, Setter }
@@ -167,7 +167,7 @@ public sealed class ClassAccessorNode(
     public bool IsOverride { get; } = isOverride;
     public TextSpan Span { get; } = span;
     public List<Annotation> Annotations { get; set; } = [];
-    public Lux.Doc.DocComment? Doc { get; set; }
+    public Nebra.Doc.DocComment? Doc { get; set; }
 }
 
 /// <summary>A method declared inside an <c>extend Type</c> block. Its <c>self</c> is the extended type.</summary>
@@ -191,7 +191,7 @@ public sealed class InterfaceFieldNode(NameRef name, TypeRef typeAnnotation, Tex
     public TypeRef TypeAnnotation { get; } = typeAnnotation;
     public TextSpan Span { get; } = span;
     public List<Annotation> Annotations { get; set; } = [];
-    public Lux.Doc.DocComment? Doc { get; set; }
+    public Nebra.Doc.DocComment? Doc { get; set; }
 }
 
 public sealed class InterfaceMethodNode(
@@ -206,7 +206,7 @@ public sealed class InterfaceMethodNode(
     public TextSpan Span { get; } = span;
     public List<TypeParamDef> TypeParams { get; set; } = [];
     public List<Annotation> Annotations { get; set; } = [];
-    public Lux.Doc.DocComment? Doc { get; set; }
+    public Nebra.Doc.DocComment? Doc { get; set; }
 
     /// <summary>
     /// The default-implementation body, or <c>null</c> for a plain abstract signature.

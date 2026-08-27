@@ -1,7 +1,7 @@
-﻿using Lux.Diagnostics;
-using Lux.IR;
+﻿using Nebra.Diagnostics;
+using Nebra.IR;
 
-namespace Lux.Compiler.Passes;
+namespace Nebra.Compiler.Passes;
 
 /// <summary>
 /// The resolve names pass is responsible for resolving all names in the source code. All usages of a name get

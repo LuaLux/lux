@@ -2,10 +2,10 @@ using System.Text.Json;
 using System.Text.Json.Serialization;
 using Tomlyn;
 
-namespace Lux.PackageManager;
+namespace Nebra.PackageManager;
 
 /// <summary>
-/// Resolved state of the dependency graph, persisted as <c>lux.lock</c>. Entries are
+/// Resolved state of the dependency graph, persisted as <c>nebra.lock</c>. Entries are
 /// sorted by name so the file is reproducible.
 /// </summary>
 public sealed class Lockfile

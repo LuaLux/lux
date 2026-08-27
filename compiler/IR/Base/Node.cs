@@ -1,6 +1,6 @@
-﻿using Lux.Diagnostics;
+﻿using Nebra.Diagnostics;
 
-namespace Lux.IR;
+namespace Nebra.IR;
 
 /// <summary>
 /// Represents a node in the intermediate representation (IR) of the program. Each node has a unique ID and a text span
@@ -58,5 +58,5 @@ public abstract class Decl(NodeID id, TextSpan span) : Stmt(id, span)
     /// Parsed LuaCATS-style documentation comment attached to this declaration,
     /// populated by <see cref="Doc.DocBinder"/> after preparse.
     /// </summary>
-    public Lux.Doc.DocComment? Doc { get; set; }
+    public Nebra.Doc.DocComment? Doc { get; set; }
 }

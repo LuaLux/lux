@@ -2,13 +2,13 @@ using System.Diagnostics;
 using System.Reflection;
 using System.Runtime.InteropServices;
 using System.Text;
-using Lux.Compiler;
-using Lux.Configuration;
-using Lux.LPS;
-using Lux.PackageManager;
-using Lux.Runtime;
+using Nebra.Compiler;
+using Nebra.Configuration;
+using Nebra.LPS;
+using Nebra.PackageManager;
+using Nebra.Runtime;
 
-namespace Lux;
+namespace Nebra;
 
 internal static class Program
 {
@@ -17,7 +17,7 @@ internal static class Program
 #if DEBUG
         if (args.Length > 0 && args[0] == "--test")
         {
-            var testFile = Path.Combine(Environment.CurrentDirectory, "..", "..", "test.lux");
+            var testFile = Path.Combine(Environment.CurrentDirectory, "..", "..", "test.neb");
             return await RunBuildFilesAsync([testFile]);
         }
 #endif
@@ -33,6 +33,7 @@ internal static class Program
             "run" => await RunExecuteAsync(args.Skip(1).ToArray()),
             "lps" => await RunLpsAsync(),
             "init" => RunInit(),
+            "migrate" => Migrator.Run(args.Skip(1).ToArray()),
             "create" => await RunCreateAsync(args.Skip(1).ToArray()),
             "install" => await RunInstallAsync(args.Skip(1).ToArray()),
             "add" => await RunAddAsync(args.Skip(1).ToArray()),
@@ -67,15 +68,15 @@ internal static class Program
 
     private static async Task<int> RunBuildProjectAsync()
     {
-        var configPath = Path.Combine(Environment.CurrentDirectory, "lux.toml");
+        var configPath = Path.Combine(Environment.CurrentDirectory, "nebra.toml");
         var config = Config.LoadFromFile(configPath) ?? new Config();
         return await CompileProjectAsync(config, runScripts: true);
     }
 
     /// <summary>
-    /// Compiles the current project (every <c>*.lux</c> file under <c>config.Source</c>)
-    /// and writes the generated Lua to <c>config.Output</c>. Shared by <c>lux build</c>
-    /// (with pre/post-build scripts) and <c>lux watch</c> (scripts skipped — a watch loop
+    /// Compiles the current project (every <c>*.neb</c> file under <c>config.Source</c>)
+    /// and writes the generated Lua to <c>config.Output</c>. Shared by <c>nebra build</c>
+    /// (with pre/post-build scripts) and <c>nebra watch</c> (scripts skipped — a watch loop
     /// should only recompile, not re-run side-effecting build hooks on every save).
     /// </summary>
     private static async Task<int> CompileProjectAsync(Config config, bool runScripts)
@@ -98,26 +99,26 @@ internal static class Program
         if (runScripts && !RunScripts(config.Scripts.PreBuild, "pre-build"))
             return 1;
 
-        var sourceFiles = Directory.GetFiles(srcDir, "*.lux", SearchOption.AllDirectories)
-            .Where(f => !f.EndsWith(".d.lux", StringComparison.OrdinalIgnoreCase))
+        var sourceFiles = Directory.GetFiles(srcDir, "*.neb", SearchOption.AllDirectories)
+            .Where(f => !f.EndsWith(".d.neb", StringComparison.OrdinalIgnoreCase))
             .ToArray();
         if (sourceFiles.Length == 0)
         {
-            var hasDecls = Directory.EnumerateFiles(srcDir, "*.d.lux", SearchOption.AllDirectories).Any();
+            var hasDecls = Directory.EnumerateFiles(srcDir, "*.d.neb", SearchOption.AllDirectories).Any();
             if (hasDecls)
             {
                 await Console.Error.WriteLineAsync(
-                    $"No .lux files found in '{config.Source}', only declarations. " +
-                    "Set `types_only = true` in lux.toml if this is a types-only package.");
+                    $"No .neb files found in '{config.Source}', only declarations. " +
+                    "Set `types_only = true` in nebra.toml if this is a types-only package.");
             }
             else
             {
-                await Console.Error.WriteLineAsync($"No .lux files found in '{config.Source}'.");
+                await Console.Error.WriteLineAsync($"No .neb files found in '{config.Source}'.");
             }
             return 1;
         }
 
-        var compiler = new LuxCompiler { Config = config };
+        var compiler = new NebraCompiler { Config = config };
         foreach (var file in sourceFiles)
             compiler.AddSource(file);
 
@@ -125,7 +126,7 @@ internal static class Program
         if (!success)
         {
             foreach (var diag in compiler.Diagnostics.Diagnostics)
-                await Console.Error.WriteLineAsync(Lux.Diagnostics.DiagnosticRenderer.Render(diag) + "\n");
+                await Console.Error.WriteLineAsync(Nebra.Diagnostics.DiagnosticRenderer.Render(diag) + "\n");
             await Console.Error.WriteLineAsync("Build FAILED.");
             return 1;
         }
@@ -143,7 +144,7 @@ internal static class Program
 
     /// <summary>
     /// Watches <c>config.Source</c> recursively and recompiles the project whenever a
-    /// <c>*.lux</c> file changes (debounced). Runs until the user presses Ctrl+C.
+    /// <c>*.neb</c> file changes (debounced). Runs until the user presses Ctrl+C.
     /// </summary>
     private static async Task<int> RunWatchAsync(string[] args)
     {
@@ -157,15 +158,15 @@ internal static class Program
             }
             else
             {
-                await Console.Error.WriteLineAsync($"error: unexpected argument '{args[i]}'. Usage: lux watch [--debounce <ms>]");
+                await Console.Error.WriteLineAsync($"error: unexpected argument '{args[i]}'. Usage: nebra watch [--debounce <ms>]");
                 return 1;
             }
         }
 
-        var configPath = Path.Combine(Environment.CurrentDirectory, "lux.toml");
+        var configPath = Path.Combine(Environment.CurrentDirectory, "nebra.toml");
         if (!File.Exists(configPath))
         {
-            await Console.Error.WriteLineAsync("error: lux.toml not found in current directory. Run 'lux init' first.");
+            await Console.Error.WriteLineAsync("error: nebra.toml not found in current directory. Run 'nebra init' first.");
             return 1;
         }
 
@@ -183,7 +184,7 @@ internal static class Program
             return 1;
         }
 
-        // A rebuild reloads lux.toml so config edits (e.g. output path) are picked up,
+        // A rebuild reloads nebra.toml so config edits (e.g. output path) are picked up,
         // and uses a fresh compiler each time since the compiler accumulates state.
         async Task RebuildAsync(string reason)
         {
@@ -201,14 +202,14 @@ internal static class Program
             Console.WriteLine("Watching for changes… (Ctrl+C to stop)");
         }
 
-        Console.WriteLine($"lux watch — watching '{initialConfig.Source}/' for *.lux changes.");
+        Console.WriteLine($"nebra watch — watching '{initialConfig.Source}/' for *.neb changes.");
         await RebuildAsync("initial build");
 
         using var debouncer = new Debouncer(TimeSpan.FromMilliseconds(debounceMs), RebuildAsync);
         using var watcher = new FileSystemWatcher(srcDir)
         {
             IncludeSubdirectories = true,
-            Filter = "*.lux",
+            Filter = "*.neb",
             NotifyFilter = NotifyFilters.LastWrite | NotifyFilters.FileName |
                            NotifyFilters.DirectoryName | NotifyFilters.Size,
         };
@@ -237,7 +238,7 @@ internal static class Program
         Console.CancelKeyPress += onCancel;
 
         // Console.CancelKeyPress alone is unreliable when stdout is redirected or the
-        // process has no controlling terminal (CI, `lux watch > log &`). Register the
+        // process has no controlling terminal (CI, `nebra watch > log &`). Register the
         // POSIX signals directly so Ctrl+C / SIGTERM always stop the loop cleanly.
         var signals = new List<PosixSignalRegistration>();
         if (!OperatingSystem.IsWindows())
@@ -262,7 +263,7 @@ internal static class Program
             foreach (var reg in signals) reg.Dispose();
         }
 
-        Console.WriteLine("\nlux watch stopped.");
+        Console.WriteLine("\nnebra watch stopped.");
         return 0;
     }
 
@@ -334,21 +335,21 @@ internal static class Program
     private static async Task<int> RunBuildFilesAsync(string[] fileArgs)
     {
         Config? config = null;
-        var luxFiles = new List<string>();
+        var nebraFiles = new List<string>();
 
         foreach (var arg in fileArgs)
         {
             var fullPath = Path.GetFullPath(arg);
             if (fullPath.EndsWith(".toml", StringComparison.OrdinalIgnoreCase) ||
-                fullPath.EndsWith("lux.toml", StringComparison.OrdinalIgnoreCase))
+                fullPath.EndsWith("nebra.toml", StringComparison.OrdinalIgnoreCase))
             {
                 config = Config.LoadFromFile(fullPath);
             }
-            else if (fullPath.EndsWith(".lux", StringComparison.OrdinalIgnoreCase) &&
-                     !fullPath.EndsWith(".d.lux", StringComparison.OrdinalIgnoreCase))
+            else if (fullPath.EndsWith(".neb", StringComparison.OrdinalIgnoreCase) &&
+                     !fullPath.EndsWith(".d.neb", StringComparison.OrdinalIgnoreCase))
             {
                 if (File.Exists(fullPath))
-                    luxFiles.Add(fullPath);
+                    nebraFiles.Add(fullPath);
                 else
                     await Console.Error.WriteLineAsync($"File not found: {arg}");
             }
@@ -360,21 +361,21 @@ internal static class Program
 
         config ??= new Config();
 
-        if (luxFiles.Count == 0)
+        if (nebraFiles.Count == 0)
         {
-            await Console.Error.WriteLineAsync("No .lux files specified.");
+            await Console.Error.WriteLineAsync("No .neb files specified.");
             return 1;
         }
 
-        var compiler = new LuxCompiler { Config = config };
-        foreach (var file in luxFiles)
+        var compiler = new NebraCompiler { Config = config };
+        foreach (var file in nebraFiles)
             compiler.AddSource(file);
 
         var success = compiler.Compile();
         if (!success)
         {
             foreach (var diag in compiler.Diagnostics.Diagnostics)
-                await Console.Error.WriteLineAsync(Lux.Diagnostics.DiagnosticRenderer.Render(diag) + "\n");
+                await Console.Error.WriteLineAsync(Nebra.Diagnostics.DiagnosticRenderer.Render(diag) + "\n");
             await Console.Error.WriteLineAsync("Build FAILED.");
             return 1;
         }
@@ -382,17 +383,17 @@ internal static class Program
         var outDir = Path.Combine(Environment.CurrentDirectory, config.Output);
         Directory.CreateDirectory(outDir);
 
-        var baseDir = luxFiles.Count == 1
-            ? Path.GetDirectoryName(luxFiles[0])!
-            : FindCommonParent(luxFiles);
+        var baseDir = nebraFiles.Count == 1
+            ? Path.GetDirectoryName(nebraFiles[0])!
+            : FindCommonParent(nebraFiles);
 
         await WriteOutputFilesAsync(compiler, baseDir, outDir, config);
 
-        Console.WriteLine($"Build SUCCESS — {luxFiles.Count} file(s) compiled to '{config.Output}/'.");
+        Console.WriteLine($"Build SUCCESS — {nebraFiles.Count} file(s) compiled to '{config.Output}/'.");
         return 0;
     }
 
-    private static async Task WriteOutputFilesAsync(LuxCompiler compiler, string baseDir, string outDir, Config config)
+    private static async Task WriteOutputFilesAsync(NebraCompiler compiler, string baseDir, string outDir, Config config)
     {
         foreach (var pkg in compiler.Packages.Values)
         {
@@ -413,7 +414,7 @@ internal static class Program
         if (compiler.Cache.TryGetValue("GeneratedDeclarations", out var declObj) && declObj is string declContent)
         {
             var declName = config.Name ?? "index";
-            var declPath = Path.Combine(outDir, declName + ".d.lux");
+            var declPath = Path.Combine(outDir, declName + ".d.neb");
             await File.WriteAllTextAsync(declPath, declContent);
         }
         
@@ -426,9 +427,9 @@ internal static class Program
         Console.WriteLine($"Copying assets from '{config.Name}' to '{outDir}'.");
 
         // Asset paths are resolved relative to the PROJECT ROOT (where
-        // `lux.toml` lives, i.e. the current working directory at build time),
+        // `nebra.toml` lives, i.e. the current working directory at build time),
         // not the common parent of source files. This lets manifests like
-        // `Package.toml` sit next to `lux.toml` outside `src/` and still be
+        // `Package.toml` sit next to `nebra.toml` outside `src/` and still be
         // copied into the output.
         var projectRoot = Environment.CurrentDirectory;
 
@@ -496,13 +497,13 @@ internal static class Program
     private static async Task<int> RunExecuteAsync(string[] fileArgs)
     {
         Config? config = null;
-        var luxFiles = new List<string>();
+        var nebraFiles = new List<string>();
         var passThroughArgs = new List<string>();
-        var parsingLuxArgs = true;
+        var parsingNebraArgs = true;
 
         foreach (var arg in fileArgs)
         {
-            if (!parsingLuxArgs)
+            if (!parsingNebraArgs)
             {
                 passThroughArgs.Add(arg);
                 continue;
@@ -510,20 +511,20 @@ internal static class Program
 
             if (arg == "--")
             {
-                parsingLuxArgs = false;
+                parsingNebraArgs = false;
                 continue;
             }
 
             var fullPath = Path.GetFullPath(arg);
             if (fullPath.EndsWith(".toml", StringComparison.OrdinalIgnoreCase) ||
-                fullPath.EndsWith("lux.toml", StringComparison.OrdinalIgnoreCase))
+                fullPath.EndsWith("nebra.toml", StringComparison.OrdinalIgnoreCase))
             {
                 config = Config.LoadFromFile(fullPath);
             }
-            else if (fullPath.EndsWith(".lux", StringComparison.OrdinalIgnoreCase) &&
-                     !fullPath.EndsWith(".d.lux", StringComparison.OrdinalIgnoreCase))
+            else if (fullPath.EndsWith(".neb", StringComparison.OrdinalIgnoreCase) &&
+                     !fullPath.EndsWith(".d.neb", StringComparison.OrdinalIgnoreCase))
             {
-                if (File.Exists(fullPath)) luxFiles.Add(fullPath);
+                if (File.Exists(fullPath)) nebraFiles.Add(fullPath);
                 else await Console.Error.WriteLineAsync($"File not found: {arg}");
             }
             else
@@ -532,10 +533,10 @@ internal static class Program
             }
         }
 
-        var projectMode = luxFiles.Count == 0;
+        var projectMode = nebraFiles.Count == 0;
         if (projectMode)
         {
-            var configPath = Path.Combine(Environment.CurrentDirectory, "lux.toml");
+            var configPath = Path.Combine(Environment.CurrentDirectory, "nebra.toml");
             config ??= Config.LoadFromFile(configPath) ?? new Config();
 
             if (config.TypesOnly)
@@ -551,13 +552,13 @@ internal static class Program
                 return 1;
             }
 
-            luxFiles.AddRange(Directory
-                .GetFiles(srcDir, "*.lux", SearchOption.AllDirectories)
-                .Where(f => !f.EndsWith(".d.lux", StringComparison.OrdinalIgnoreCase)));
+            nebraFiles.AddRange(Directory
+                .GetFiles(srcDir, "*.neb", SearchOption.AllDirectories)
+                .Where(f => !f.EndsWith(".d.neb", StringComparison.OrdinalIgnoreCase)));
 
-            if (luxFiles.Count == 0)
+            if (nebraFiles.Count == 0)
             {
-                await Console.Error.WriteLineAsync($"No .lux files found in '{config.Source}'.");
+                await Console.Error.WriteLineAsync($"No .neb files found in '{config.Source}'.");
                 return 1;
             }
         }
@@ -566,26 +567,26 @@ internal static class Program
             config ??= new Config();
         }
 
-        var compiler = new LuxCompiler { Config = config };
-        foreach (var file in luxFiles)
+        var compiler = new NebraCompiler { Config = config };
+        foreach (var file in nebraFiles)
             compiler.AddSource(file);
 
         var success = compiler.Compile();
         if (!success)
         {
             foreach (var diag in compiler.Diagnostics.Diagnostics)
-                await Console.Error.WriteLineAsync(Lux.Diagnostics.DiagnosticRenderer.Render(diag) + "\n");
+                await Console.Error.WriteLineAsync(Nebra.Diagnostics.DiagnosticRenderer.Render(diag) + "\n");
             await Console.Error.WriteLineAsync("Build FAILED.");
             return 1;
         }
 
         var baseDir = projectMode
             ? Path.Combine(Environment.CurrentDirectory, config.Source)
-            : (luxFiles.Count == 1 ? Path.GetDirectoryName(luxFiles[0])! : FindCommonParent(luxFiles));
+            : (nebraFiles.Count == 1 ? Path.GetDirectoryName(nebraFiles[0])! : FindCommonParent(nebraFiles));
 
         var outDir = projectMode
             ? Path.Combine(Environment.CurrentDirectory, config.Output)
-            : Path.Combine(Path.GetTempPath(), "lux-run-" + Guid.NewGuid().ToString("N")[..8]);
+            : Path.Combine(Path.GetTempPath(), "nebra-run-" + Guid.NewGuid().ToString("N")[..8]);
 
         Directory.CreateDirectory(outDir);
         await WriteOutputFilesAsync(compiler, baseDir, outDir, config);
@@ -596,7 +597,7 @@ internal static class Program
             string rel;
             if (config.Entry.EndsWith(".lua", StringComparison.OrdinalIgnoreCase))
                 rel = config.Entry;
-            else if (config.Entry.EndsWith(".lux", StringComparison.OrdinalIgnoreCase))
+            else if (config.Entry.EndsWith(".neb", StringComparison.OrdinalIgnoreCase))
                 rel = config.Entry[..^4] + ".lua";
             else
                 rel = config.Entry + ".lua";
@@ -604,26 +605,26 @@ internal static class Program
             if (File.Exists(candidate)) entryPath = candidate;
             else
             {
-                await Console.Error.WriteLineAsync($"lux run: entry '{config.Entry}' not found in '{outDir}'.");
+                await Console.Error.WriteLineAsync($"nebra run: entry '{config.Entry}' not found in '{outDir}'.");
                 return 1;
             }
         }
         else
         {
-            entryPath = ResolveDefaultEntry(outDir, baseDir, luxFiles);
+            entryPath = ResolveDefaultEntry(outDir, baseDir, nebraFiles);
             if (entryPath == null)
             {
                 await Console.Error.WriteLineAsync(
-                    "lux run: could not determine entry file. Set [entry] in lux.toml, " +
-                    "or add a 'main.lux' / 'index.lux' to your source root.");
+                    "nebra run: could not determine entry file. Set [entry] in nebra.toml, " +
+                    "or add a 'main.neb' / 'index.neb' to your source root.");
                 return 1;
             }
         }
 
-        using var runtime = new LuxRuntime();
+        using var runtime = new NebraRuntime();
         runtime.AddPackagePath(outDir);
 
-        var modulesDir = Path.Combine(Environment.CurrentDirectory, "lux_modules");
+        var modulesDir = Path.Combine(Environment.CurrentDirectory, "nebra_modules");
         if (Directory.Exists(modulesDir))
             runtime.AddPackagePath(modulesDir);
 
@@ -640,7 +641,7 @@ internal static class Program
         return ok ? 0 : 1;
     }
 
-    private static string? ResolveDefaultEntry(string outDir, string baseDir, List<string> luxFiles)
+    private static string? ResolveDefaultEntry(string outDir, string baseDir, List<string> nebraFiles)
     {
         foreach (var candidate in new[] { "main.lua", "index.lua", "init.lua" })
         {
@@ -648,9 +649,9 @@ internal static class Program
             if (File.Exists(path)) return path;
         }
 
-        if (luxFiles.Count == 1)
+        if (nebraFiles.Count == 1)
         {
-            var rel = Path.GetRelativePath(baseDir, luxFiles[0]);
+            var rel = Path.GetRelativePath(baseDir, nebraFiles[0]);
             var lua = Path.Combine(outDir, Path.ChangeExtension(rel, ".lua"));
             if (File.Exists(lua)) return lua;
         }
@@ -658,25 +659,25 @@ internal static class Program
         return null;
     }
 
-    private static void PushCommandLineArgs(LuxRuntime runtime, List<string> args)
+    private static void PushCommandLineArgs(NebraRuntime runtime, List<string> args)
     {
         if (args.Count == 0) return;
         var escaped = string.Join(", ", args.Select(a => "\"" + a.Replace("\\", "\\\\").Replace("\"", "\\\"") + "\""));
-        runtime.RunChunk($"arg = {{ {escaped} }}", "<lux-run-args>");
+        runtime.RunChunk($"arg = {{ {escaped} }}", "<nebra-run-args>");
     }
 
     private static async Task<int> RunLpsAsync()
     {
-        await LuxLanguageServer.RunAsync();
+        await NebraLanguageServer.RunAsync();
         return 0;
     }
 
     private static int RunInit()
     {
-        var configPath = Path.Combine(Environment.CurrentDirectory, "lux.toml");
+        var configPath = Path.Combine(Environment.CurrentDirectory, "nebra.toml");
         if (File.Exists(configPath))
         {
-            Console.Error.WriteLine("lux.toml already exists in the current directory.");
+            Console.Error.WriteLine("nebra.toml already exists in the current directory.");
             return 1;
         }
 
@@ -697,7 +698,7 @@ internal static class Program
         Directory.CreateDirectory(Path.Combine(Environment.CurrentDirectory, defaults.Output));
 
         var gitignorePath = Path.Combine(Environment.CurrentDirectory, ".gitignore");
-        var entries = new[] { $"{defaults.Output}/", "lux_modules/" };
+        var entries = new[] { $"{defaults.Output}/", "nebra_modules/" };
         if (!File.Exists(gitignorePath))
         {
             File.WriteAllText(gitignorePath, string.Join('\n', entries) + "\n");
@@ -714,8 +715,8 @@ internal static class Program
             }
         }
 
-        Console.WriteLine("Initialized Lux project:");
-        Console.WriteLine($"  lux.toml");
+        Console.WriteLine("Initialized Nebra project:");
+        Console.WriteLine($"  nebra.toml");
         Console.WriteLine($"  {defaults.Source}/");
         Console.WriteLine($"  {defaults.Output}/");
         Console.WriteLine($"  .gitignore");
@@ -724,11 +725,11 @@ internal static class Program
 
     private static int RunVersion()
     {
-        Console.WriteLine($"lux {GetLuxVersion()}");
+        Console.WriteLine($"nebra {GetNebraVersion()}");
         return 0;
     }
 
-    internal static string GetLuxVersion()
+    internal static string GetNebraVersion()
     {
         var asm = Assembly.GetExecutingAssembly();
         var informational = asm.GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion;
@@ -742,19 +743,21 @@ internal static class Program
 
     private static int RunHelp()
     {
-        Console.WriteLine("Usage: lux <command> [args]");
+        Console.WriteLine("Usage: nebra <command> [args]");
         Console.WriteLine();
         Console.WriteLine("Commands:");
-        Console.WriteLine("  build              Compile the project (reads lux.toml)");
-        Console.WriteLine("  build <files...>   Compile specific .lux files (optional lux.toml)");
-        Console.WriteLine("  watch              Recompile the project whenever a *.lux file changes");
+        Console.WriteLine("  build              Compile the project (reads nebra.toml)");
+        Console.WriteLine("  build <files...>   Compile specific .neb files (optional nebra.toml)");
+        Console.WriteLine("  watch              Recompile the project whenever a *.neb file changes");
         Console.WriteLine("                     Flags: --debounce <ms> (default 300)");
         Console.WriteLine("  run                Compile and execute the project via embedded Lua");
-        Console.WriteLine("  run <files...>     Compile and execute specific .lux files");
-        Console.WriteLine("  init               Create a new Lux project in the current directory");
+        Console.WriteLine("  run <files...>     Compile and execute specific .neb files");
+        Console.WriteLine("  init               Create a new Nebra project in the current directory");
+        Console.WriteLine("  migrate [dir]      Convert a project from the old 'lux' toolchain to Nebra");
+        Console.WriteLine("                     Flags: --dry-run, --no-backup");
         Console.WriteLine("  create <spec>      Scaffold a new project from a template (git spec or setup URL)");
         Console.WriteLine("                     Flags: [dir], --skip-setup, --offline, --no-cache");
-        Console.WriteLine("  install            Install declared dependencies into lux_modules/");
+        Console.WriteLine("  install            Install declared dependencies into nebra_modules/");
         Console.WriteLine("  add <spec>         Add a dependency (e.g. github:owner/repo@v1)");
         Console.WriteLine("                     Monorepo: github:owner/repo/path/to/pkg@v1 picks one package");
         Console.WriteLine("                     Flags: --dev, --peer");
@@ -769,12 +772,12 @@ internal static class Program
         Console.WriteLine("  compile            Bundle the project into a standalone native binary");
         Console.WriteLine("                     Flags: --out <path>, --name <appname>, --target <rid>,");
         Console.WriteLine("                            --aot (experimental), --keep-build");
-        Console.WriteLine("  repl               Start an interactive Lux session (Ctrl+D or :quit to exit)");
+        Console.WriteLine("  repl               Start an interactive Nebra session (Ctrl+D or :quit to exit)");
         Console.WriteLine("  lps                Start the language server (LSP via stdio)");
-        Console.WriteLine("  check              Check whether a newer Lux release is available");
-        Console.WriteLine("  upgrade            Download and install the latest Lux release");
+        Console.WriteLine("  check              Check whether a newer Nebra release is available");
+        Console.WriteLine("  upgrade            Download and install the latest Nebra release");
         Console.WriteLine("                     Flags: --force (reinstall even if already up to date)");
-        Console.WriteLine("  version            Print the Lux version");
+        Console.WriteLine("  version            Print the Nebra version");
         Console.WriteLine("  help               Show this help message");
         return 0;
     }
@@ -807,7 +810,7 @@ internal static class Program
             return 1;
         }
 
-        var configPath = Path.Combine(Environment.CurrentDirectory, "lux.toml");
+        var configPath = Path.Combine(Environment.CurrentDirectory, "nebra.toml");
         var config = Config.LoadFromFile(configPath) ?? new Config();
 
         var site = Doc.DocSiteBuilder.Build(config, Environment.CurrentDirectory, out var diagnostics);
@@ -853,8 +856,8 @@ internal static class Program
                         return 1;
                     }
                     var path = Path.GetFullPath(a);
-                    if (File.Exists(path) && path.EndsWith(".lux", StringComparison.OrdinalIgnoreCase)
-                        && !path.EndsWith(".d.lux", StringComparison.OrdinalIgnoreCase))
+                    if (File.Exists(path) && path.EndsWith(".neb", StringComparison.OrdinalIgnoreCase)
+                        && !path.EndsWith(".d.neb", StringComparison.OrdinalIgnoreCase))
                         explicitFiles.Add(path);
                     else if (filter == null)
                         filter = a;
@@ -867,7 +870,7 @@ internal static class Program
             }
         }
 
-        var configPath = Path.Combine(Environment.CurrentDirectory, "lux.toml");
+        var configPath = Path.Combine(Environment.CurrentDirectory, "nebra.toml");
         var config = Config.LoadFromFile(configPath) ?? new Config();
         quiet = quiet || config.Test.Quiet;
 
@@ -879,8 +882,8 @@ internal static class Program
 
         var srcDir = Path.Combine(Environment.CurrentDirectory, config.Source);
         var sourceFiles = Directory.Exists(srcDir)
-            ? Directory.GetFiles(srcDir, "*.lux", SearchOption.AllDirectories)
-                .Where(f => !f.EndsWith(".d.lux", StringComparison.OrdinalIgnoreCase))
+            ? Directory.GetFiles(srcDir, "*.neb", SearchOption.AllDirectories)
+                .Where(f => !f.EndsWith(".d.neb", StringComparison.OrdinalIgnoreCase))
                 .ToList()
             : [];
 
@@ -891,62 +894,62 @@ internal static class Program
         if (testFiles.Count == 0)
         {
             await Console.Error.WriteLineAsync(
-                $"lux test: no test files found. Searched dirs: {string.Join(", ", config.Test.Dirs)}; " +
+                $"nebra test: no test files found. Searched dirs: {string.Join(", ", config.Test.Dirs)}; " +
                 $"patterns: {string.Join(", ", config.Test.Patterns)}.");
             return 1;
         }
 
-        var allLuxFiles = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-        foreach (var f in sourceFiles) allLuxFiles.Add(f);
-        foreach (var f in testFiles) allLuxFiles.Add(f);
+        var allNebraFiles = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        foreach (var f in sourceFiles) allNebraFiles.Add(f);
+        foreach (var f in testFiles) allNebraFiles.Add(f);
 
-        var compiler = new LuxCompiler { Config = config };
-        foreach (var file in allLuxFiles) compiler.AddSource(file);
+        var compiler = new NebraCompiler { Config = config };
+        foreach (var file in allNebraFiles) compiler.AddSource(file);
 
         var success = compiler.Compile();
         if (!success)
         {
             foreach (var diag in compiler.Diagnostics.Diagnostics)
-                await Console.Error.WriteLineAsync(Lux.Diagnostics.DiagnosticRenderer.Render(diag) + "\n");
-            await Console.Error.WriteLineAsync("lux test: compilation FAILED.");
+                await Console.Error.WriteLineAsync(Nebra.Diagnostics.DiagnosticRenderer.Render(diag) + "\n");
+            await Console.Error.WriteLineAsync("nebra test: compilation FAILED.");
             return 1;
         }
 
-        var outDir = Path.Combine(Path.GetTempPath(), "lux-test-" + Guid.NewGuid().ToString("N")[..8]);
+        var outDir = Path.Combine(Path.GetTempPath(), "nebra-test-" + Guid.NewGuid().ToString("N")[..8]);
         Directory.CreateDirectory(outDir);
-        var baseDir = FindCommonParent([.. allLuxFiles]);
+        var baseDir = FindCommonParent([.. allNebraFiles]);
         await WriteOutputFilesAsync(compiler, baseDir, outDir, config);
 
         var compiledPaths = new List<string>();
-        foreach (var luxPath in testFiles)
+        foreach (var nebraPath in testFiles)
         {
-            var rel = Path.GetRelativePath(baseDir, luxPath);
+            var rel = Path.GetRelativePath(baseDir, nebraPath);
             var luaPath = Path.Combine(outDir, Path.ChangeExtension(rel, ".lua"));
             if (File.Exists(luaPath)) compiledPaths.Add(luaPath);
-            else await Console.Error.WriteLineAsync($"lux test: compiled output missing for {luxPath}");
+            else await Console.Error.WriteLineAsync($"nebra test: compiled output missing for {nebraPath}");
         }
 
         if (compiledPaths.Count == 0)
         {
-            await Console.Error.WriteLineAsync("lux test: no compiled test files to execute.");
+            await Console.Error.WriteLineAsync("nebra test: no compiled test files to execute.");
             try { Directory.Delete(outDir, recursive: true); } catch { }
             return 1;
         }
 
-        using var runtime = new LuxRuntime();
+        using var runtime = new NebraRuntime();
         runtime.AddPackagePath(outDir);
-        var modulesDir = Path.Combine(Environment.CurrentDirectory, "lux_modules");
+        var modulesDir = Path.Combine(Environment.CurrentDirectory, "nebra_modules");
         if (Directory.Exists(modulesDir)) runtime.AddPackagePath(modulesDir);
 
-        if (!runtime.RegisterEmbeddedModule("lux:test", typeof(Program).Assembly, "test_runtime.lua"))
+        if (!runtime.RegisterEmbeddedModule("nebra:test", typeof(Program).Assembly, "test_runtime.lua"))
         {
-            await Console.Error.WriteLineAsync("lux test: failed to register lux:test runtime module.");
+            await Console.Error.WriteLineAsync("nebra test: failed to register nebra:test runtime module.");
             try { Directory.Delete(outDir, recursive: true); } catch { }
             return 1;
         }
 
         var runnerScript = BuildTestRunnerScript(compiledPaths, filter, quiet);
-        var ok = runtime.RunChunk(runnerScript, "<lux-test-runner>");
+        var ok = runtime.RunChunk(runnerScript, "<nebra-test-runner>");
 
         try { Directory.Delete(outDir, recursive: true); } catch { }
         return ok ? 0 : 1;
@@ -975,9 +978,9 @@ internal static class Program
                 ? dir
                 : Path.Combine(Environment.CurrentDirectory, dir);
             if (!Directory.Exists(fullDir)) continue;
-            foreach (var f in Directory.EnumerateFiles(fullDir, "*.lux", SearchOption.AllDirectories))
+            foreach (var f in Directory.EnumerateFiles(fullDir, "*.neb", SearchOption.AllDirectories))
             {
-                if (f.EndsWith(".d.lux", StringComparison.OrdinalIgnoreCase)) continue;
+                if (f.EndsWith(".d.neb", StringComparison.OrdinalIgnoreCase)) continue;
                 result.Add(Path.GetFullPath(f));
             }
         }
@@ -988,7 +991,7 @@ internal static class Program
     private static string BuildTestRunnerScript(List<string> compiledLuaPaths, string? filter, bool quiet)
     {
         var sb = new System.Text.StringBuilder();
-        sb.AppendLine("local _T = require(\"lux:test\")");
+        sb.AppendLine("local _T = require(\"nebra:test\")");
         if (quiet) sb.AppendLine("_T.__set_quiet(true)");
         if (!string.IsNullOrEmpty(filter))
             sb.AppendLine($"_T.__set_filter({EscapeLuaString(filter)})");
@@ -1009,17 +1012,17 @@ internal static class Program
         return "\"" + s.Replace("\\", "\\\\").Replace("\"", "\\\"").Replace("\n", "\\n") + "\"";
     }
 
-    #region lux repl
+    #region nebra repl
 
     private static async Task<int> RunReplAsync(string[] args)
     {
-        var configPath = Path.Combine(Environment.CurrentDirectory, "lux.toml");
+        var configPath = Path.Combine(Environment.CurrentDirectory, "nebra.toml");
         var config = Config.LoadFromFile(configPath) ?? new Config();
 
-        LuxRuntime CreateRuntime()
+        NebraRuntime CreateRuntime()
         {
-            var rt = new LuxRuntime();
-            var modulesDir = Path.Combine(Environment.CurrentDirectory, "lux_modules");
+            var rt = new NebraRuntime();
+            var modulesDir = Path.Combine(Environment.CurrentDirectory, "nebra_modules");
             if (Directory.Exists(modulesDir)) rt.AddPackagePath(modulesDir);
             return rt;
         }
@@ -1032,7 +1035,7 @@ internal static class Program
             var buffer = new StringBuilder();
             while (true)
             {
-                Console.Write(buffer.Length == 0 ? "[36mlux>[0m " : "[2m...>[0m ");
+                Console.Write(buffer.Length == 0 ? "[36mnebra>[0m " : "[2m...>[0m ");
                 var line = Console.ReadLine();
                 if (line == null)
                 {
@@ -1080,14 +1083,14 @@ internal static class Program
 
     private static void PrintReplHeader(Config config)
     {
-        Console.WriteLine($"[1mLux REPL[0m {GetLuxVersion()} (target {config.Target}). Type [36m:help[0m for commands, [36m:quit[0m to exit.");
+        Console.WriteLine($"[1mNebra REPL[0m {GetNebraVersion()} (target {config.Target}). Type [36m:help[0m for commands, [36m:quit[0m to exit.");
         Console.WriteLine("[2mNote: top-level `local` declarations don't persist between inputs — use `name = ...` for globals.[0m");
     }
 
     private enum ReplCommandResult { Continue, Quit, Reset }
 
     private static (ReplCommandResult Action, string? Replacement) HandleReplCommand(
-        string cmd, LuxRuntime runtime, Config config)
+        string cmd, NebraRuntime runtime, Config config)
     {
         var parts = cmd.Split(' ', 2);
         switch (parts[0])
@@ -1110,7 +1113,7 @@ internal static class Program
             case ":l":
                 if (parts.Length < 2)
                 {
-                    Console.Error.WriteLine("Usage: :load <path-to-.lux-file>");
+                    Console.Error.WriteLine("Usage: :load <path-to-.neb-file>");
                     return (ReplCommandResult.Continue, null);
                 }
                 var path = parts[1].Trim().Trim('"');
@@ -1141,7 +1144,7 @@ internal static class Program
         Console.WriteLine("  :quit, :q        Exit the REPL");
         Console.WriteLine("  :clear           Clear the screen");
         Console.WriteLine("  :reset           Drop all defined globals (fresh runtime)");
-        Console.WriteLine("  :load <path>     Read and evaluate a .lux file in this session");
+        Console.WriteLine("  :load <path>     Read and evaluate a .neb file in this session");
         Console.WriteLine();
         Console.WriteLine("Tips:");
         Console.WriteLine("  • A bare expression like `2 + 2` prints its value automatically.");
@@ -1149,17 +1152,17 @@ internal static class Program
         Console.WriteLine("  • Multi-line input continues until brackets/blocks balance.");
     }
 
-    private static void EvaluateRepl(LuxRuntime runtime, Config config, string input)
+    private static void EvaluateRepl(NebraRuntime runtime, Config config, string input)
     {
         config.ReplMode = true;
-        if (TryCompileLuxToLua("return " + input, config, out var luaExpr, out _))
+        if (TryCompileNebraToLua("return " + input, config, out var luaExpr, out _))
         {
             var wrapped = "do local __r = (function() " + luaExpr + " end)(); if __r ~= nil then print(__r) end end";
             runtime.RunChunk(wrapped, "<repl>");
             return;
         }
 
-        if (TryCompileLuxToLua(input, config, out var luaStmt, out var stmtErrors))
+        if (TryCompileNebraToLua(input, config, out var luaStmt, out var stmtErrors))
         {
             runtime.RunChunk(luaStmt, "<repl>");
             return;
@@ -1169,12 +1172,12 @@ internal static class Program
             Console.Error.WriteLine(err);
     }
 
-    private static bool TryCompileLuxToLua(string source, Config config,
+    private static bool TryCompileNebraToLua(string source, Config config,
         out string luaSource, out List<string> errors)
     {
         luaSource = "";
         errors = [];
-        var compiler = new LuxCompiler { Config = config };
+        var compiler = new NebraCompiler { Config = config };
         compiler.AddRawSource(source);
         if (!compiler.Compile())
         {
@@ -1210,7 +1213,7 @@ internal static class Program
         try
         {
             var input = new Antlr4.Runtime.AntlrInputStream(source);
-            var lexer = new LuxLexer(input);
+            var lexer = new NebraLexer(input);
             lexer.RemoveErrorListeners();
             var stream = new Antlr4.Runtime.CommonTokenStream(lexer);
             stream.Fill();
@@ -1223,27 +1226,27 @@ internal static class Program
             {
                 switch (tok.Type)
                 {
-                    case LuxLexer.FUNCTION:
-                    case LuxLexer.DO:
-                    case LuxLexer.IF:
-                    case LuxLexer.FOR:
-                    case LuxLexer.WHILE:
-                    case LuxLexer.MATCH:
-                    case LuxLexer.CLASS:
-                    case LuxLexer.INTERFACE:
-                    case LuxLexer.ENUM:
-                    case LuxLexer.MODULE:
-                    case LuxLexer.REPEAT:
+                    case NebraLexer.FUNCTION:
+                    case NebraLexer.DO:
+                    case NebraLexer.IF:
+                    case NebraLexer.FOR:
+                    case NebraLexer.WHILE:
+                    case NebraLexer.MATCH:
+                    case NebraLexer.CLASS:
+                    case NebraLexer.INTERFACE:
+                    case NebraLexer.ENUM:
+                    case NebraLexer.MODULE:
+                    case NebraLexer.REPEAT:
                         blockDepth++; break;
-                    case LuxLexer.END:
-                    case LuxLexer.UNTIL:
+                    case NebraLexer.END:
+                    case NebraLexer.UNTIL:
                         blockDepth--; break;
-                    case LuxLexer.LPAREN: parens++; break;
-                    case LuxLexer.RPAREN: parens--; break;
-                    case LuxLexer.LBRACK: brackets++; break;
-                    case LuxLexer.RBRACK: brackets--; break;
-                    case LuxLexer.LBRACE: braces++; break;
-                    case LuxLexer.RBRACE: braces--; break;
+                    case NebraLexer.LPAREN: parens++; break;
+                    case NebraLexer.RPAREN: parens--; break;
+                    case NebraLexer.LBRACK: brackets++; break;
+                    case NebraLexer.RBRACK: brackets--; break;
+                    case NebraLexer.LBRACE: braces++; break;
+                    case NebraLexer.RBRACE: braces--; break;
                 }
             }
             return blockDepth > 0 || parens > 0 || brackets > 0 || braces > 0;
@@ -1256,7 +1259,7 @@ internal static class Program
 
     #endregion
 
-    #region lux compile
+    #region nebra compile
 
     private static async Task<int> RunCompileAsync(string[] args)
     {
@@ -1289,11 +1292,11 @@ internal static class Program
 
         if (!await DetectDotnetSdkAsync())
         {
-            await Console.Error.WriteLineAsync("error: dotnet SDK not found in PATH. Install .NET 10+ to compile Lux binaries.");
+            await Console.Error.WriteLineAsync("error: dotnet SDK not found in PATH. Install .NET 10+ to compile Nebra binaries.");
             return 1;
         }
 
-        var configPath = Path.Combine(Environment.CurrentDirectory, "lux.toml");
+        var configPath = Path.Combine(Environment.CurrentDirectory, "nebra.toml");
         var config = Config.LoadFromFile(configPath) ?? new Config();
 
         if (config.TypesOnly)
@@ -1309,22 +1312,22 @@ internal static class Program
             return 1;
         }
 
-        var sourceFiles = Directory.GetFiles(srcDir, "*.lux", SearchOption.AllDirectories)
-            .Where(f => !f.EndsWith(".d.lux", StringComparison.OrdinalIgnoreCase))
+        var sourceFiles = Directory.GetFiles(srcDir, "*.neb", SearchOption.AllDirectories)
+            .Where(f => !f.EndsWith(".d.neb", StringComparison.OrdinalIgnoreCase))
             .ToArray();
         if (sourceFiles.Length == 0)
         {
-            await Console.Error.WriteLineAsync($"error: no .lux files in '{config.Source}'.");
+            await Console.Error.WriteLineAsync($"error: no .neb files in '{config.Source}'.");
             return 1;
         }
 
-        Console.WriteLine($"[1/5] Compiling {sourceFiles.Length} Lux file(s)…");
-        var compiler = new LuxCompiler { Config = config };
+        Console.WriteLine($"[1/5] Compiling {sourceFiles.Length} Nebra file(s)…");
+        var compiler = new NebraCompiler { Config = config };
         foreach (var f in sourceFiles) compiler.AddSource(f);
         if (!compiler.Compile())
         {
             foreach (var d in compiler.Diagnostics.Diagnostics)
-                await Console.Error.WriteLineAsync(Lux.Diagnostics.DiagnosticRenderer.Render(d) + "\n");
+                await Console.Error.WriteLineAsync(Nebra.Diagnostics.DiagnosticRenderer.Render(d) + "\n");
             return 1;
         }
 
@@ -1333,7 +1336,7 @@ internal static class Program
         {
             await Console.Error.WriteLineAsync("error: standalone binary cannot bundle native modules:");
             foreach (var p in nativeIssues) await Console.Error.WriteLineAsync($"  • {p}");
-            await Console.Error.WriteLineAsync("Remove the offending package or use 'lux run' instead.");
+            await Console.Error.WriteLineAsync("Remove the offending package or use 'nebra run' instead.");
             return 1;
         }
 
@@ -1341,7 +1344,7 @@ internal static class Program
         if (entryModule == null)
         {
             await Console.Error.WriteLineAsync(
-                "error: cannot determine entry. Set [entry] in lux.toml or add src/main.lux or src/index.lux.");
+                "error: cannot determine entry. Set [entry] in nebra.toml or add src/main.neb or src/index.neb.");
             return 1;
         }
 
@@ -1376,7 +1379,7 @@ internal static class Program
             return 1;
         }
 
-        var tempDir = Path.Combine(Path.GetTempPath(), "lux-compile-" + Guid.NewGuid().ToString("N")[..8]);
+        var tempDir = Path.Combine(Path.GetTempPath(), "nebra-compile-" + Guid.NewGuid().ToString("N")[..8]);
         Directory.CreateDirectory(Path.Combine(tempDir, "resources"));
 
         foreach (var m in modules)
@@ -1386,18 +1389,18 @@ internal static class Program
             await File.WriteAllTextAsync(path, m.LuaSource);
         }
 
-        var luxRuntimePath = ResolveLuxRuntimePath();
-        if (luxRuntimePath == null)
+        var nebraRuntimePath = ResolveNebraRuntimePath();
+        if (nebraRuntimePath == null)
         {
             await Console.Error.WriteLineAsync(
-                "error: cannot locate Lux.Runtime.dll next to the running lux binary. " +
-                "If running from source, build the solution first ('dotnet build Lux.sln'). " +
+                "error: cannot locate Nebra.Runtime.dll next to the running nebra binary. " +
+                "If running from source, build the solution first ('dotnet build Nebra.sln'). " +
                 "If running a published binary, make sure the archive was fully extracted.");
             try { Directory.Delete(tempDir, true); } catch { }
             return 1;
         }
 
-        WriteLauncherCsproj(tempDir, appName, targetRid, aot, luxRuntimePath, modules);
+        WriteLauncherCsproj(tempDir, appName, targetRid, aot, nebraRuntimePath, modules);
         WriteLauncherProgram(tempDir, modules, entryModule);
 
         Console.WriteLine($"[3/5] Bundling {modules.Count} module(s) and publishing (this may take a while)…");
@@ -1449,29 +1452,29 @@ internal static class Program
     private readonly record struct BundleModule(string ModuleName, string LogicalName, string PhysicalName, string LuaSource);
 
     /// <summary>
-    /// Locates the Lux.Runtime.dll that ships alongside the running <c>lux</c>
+    /// Locates the Nebra.Runtime.dll that ships alongside the running <c>nebra</c>
     /// binary. <see cref="System.Reflection.Assembly.Location"/> returns an empty
     /// string when the assembly is embedded in a SingleFile bundle (warning
     /// IL3000), so we fall back to <see cref="AppContext.BaseDirectory"/> — which
     /// in self-extracting SingleFile mode is the directory where all assemblies
     /// have been extracted to disk on first launch.
     /// </summary>
-    private static string? ResolveLuxRuntimePath()
+    private static string? ResolveNebraRuntimePath()
     {
-        var direct = typeof(LuxRuntime).Assembly.Location;
+        var direct = typeof(NebraRuntime).Assembly.Location;
         if (!string.IsNullOrEmpty(direct) && File.Exists(direct)) return direct;
 
-        var beside = Path.Combine(AppContext.BaseDirectory, "Lux.Runtime.dll");
+        var beside = Path.Combine(AppContext.BaseDirectory, "Nebra.Runtime.dll");
         if (File.Exists(beside)) return beside;
 
         return null;
     }
 
-    private static List<BundleModule> CollectBundleModules(LuxCompiler compiler, string srcDir)
+    private static List<BundleModule> CollectBundleModules(NebraCompiler compiler, string srcDir)
     {
         var result = new List<BundleModule>();
         var seen = new HashSet<string>(StringComparer.Ordinal);
-        var modulesDir = Path.GetFullPath(Path.Combine(Environment.CurrentDirectory, "lux_modules"));
+        var modulesDir = Path.GetFullPath(Path.Combine(Environment.CurrentDirectory, "nebra_modules"));
         var normalizedSrc = Path.GetFullPath(srcDir);
 
         foreach (var pkg in compiler.Packages.Values)
@@ -1480,8 +1483,8 @@ internal static class Program
             {
                 if (string.IsNullOrEmpty(file.GeneratedLua)) continue;
                 if (file.Filename == null) continue;
-                if (!file.Filename.EndsWith(".lux", StringComparison.OrdinalIgnoreCase)) continue;
-                if (file.Filename.EndsWith(".d.lux", StringComparison.OrdinalIgnoreCase)) continue;
+                if (!file.Filename.EndsWith(".neb", StringComparison.OrdinalIgnoreCase)) continue;
+                if (file.Filename.EndsWith(".d.neb", StringComparison.OrdinalIgnoreCase)) continue;
 
                 var moduleName = ModuleNameFor(file.Filename, normalizedSrc, modulesDir);
                 if (moduleName == null) continue;
@@ -1493,8 +1496,8 @@ internal static class Program
             }
         }
 
-        // Pre-built .lua files inside lux_modules/ (not produced by LuxCompiler).
-        // These are how pure-Lua packages or pre-compiled Lux packages ship.
+        // Pre-built .lua files inside nebra_modules/ (not produced by NebraCompiler).
+        // These are how pure-Lua packages or pre-compiled Nebra packages ship.
         if (Directory.Exists(modulesDir))
         {
             foreach (var luaPath in Directory.EnumerateFiles(modulesDir, "*.lua", SearchOption.AllDirectories))
@@ -1519,7 +1522,7 @@ internal static class Program
     /// <summary>
     /// Maps a source file path to the Lua module name that <c>require(...)</c> would use.
     /// Files under <paramref name="srcDir"/> use their relative path; files inside
-    /// <c>lux_modules/&lt;pkg&gt;/</c> become <c>&lt;pkg&gt;</c> (for init.lua / init.lux) or
+    /// <c>nebra_modules/&lt;pkg&gt;/</c> become <c>&lt;pkg&gt;</c> (for init.lua / init.neb) or
     /// <c>&lt;pkg&gt;/&lt;rel&gt;</c>. Returns null for files outside both roots.
     /// </summary>
     private static string? ModuleNameFor(string filePath, string srcDir, string modulesDir)
@@ -1529,7 +1532,7 @@ internal static class Program
             || full.Equals(srcDir, StringComparison.OrdinalIgnoreCase))
         {
             var rel = Path.GetRelativePath(srcDir, full).Replace('\\', '/');
-            return StripLuxOrLuaExt(rel);
+            return StripNebraOrLuaExt(rel);
         }
 
         if (full.StartsWith(modulesDir + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase))
@@ -1539,7 +1542,7 @@ internal static class Program
             var slash = rel.IndexOf('/');
             if (slash < 0) return null;
             var pkg = rel[..slash];
-            var inner = StripLuxOrLuaExt(rel[(slash + 1)..]);
+            var inner = StripNebraOrLuaExt(rel[(slash + 1)..]);
             if (inner == "init" || string.IsNullOrEmpty(inner)) return pkg;
             return pkg + "/" + inner;
         }
@@ -1547,9 +1550,9 @@ internal static class Program
         return null;
     }
 
-    private static string StripLuxOrLuaExt(string rel)
+    private static string StripNebraOrLuaExt(string rel)
     {
-        if (rel.EndsWith(".lux", StringComparison.OrdinalIgnoreCase)) return rel[..^4];
+        if (rel.EndsWith(".neb", StringComparison.OrdinalIgnoreCase)) return rel[..^4];
         if (rel.EndsWith(".lua", StringComparison.OrdinalIgnoreCase)) return rel[..^4];
         return rel;
     }
@@ -1580,7 +1583,7 @@ internal static class Program
     private static List<string> DetectNativeDeps()
     {
         var hits = new List<string>();
-        var dir = Path.Combine(Environment.CurrentDirectory, "lux_modules");
+        var dir = Path.Combine(Environment.CurrentDirectory, "nebra_modules");
         if (!Directory.Exists(dir)) return hits;
         foreach (var p in Directory.EnumerateFiles(dir, "*.*", SearchOption.AllDirectories))
         {
@@ -1596,12 +1599,12 @@ internal static class Program
         if (!string.IsNullOrEmpty(config.Entry))
         {
             var candidate = Path.Combine(srcDir, config.Entry);
-            if (!Path.HasExtension(candidate)) candidate += ".lux";
+            if (!Path.HasExtension(candidate)) candidate += ".neb";
             if (File.Exists(candidate)) entryFile = candidate;
         }
         else
         {
-            foreach (var c in new[] { "main.lux", "index.lux" })
+            foreach (var c in new[] { "main.neb", "index.neb" })
             {
                 var p = Path.Combine(srcDir, c);
                 if (File.Exists(p)) { entryFile = p; break; }
@@ -1609,7 +1612,7 @@ internal static class Program
         }
         if (entryFile == null) return null;
         var rel = Path.GetRelativePath(srcDir, entryFile).Replace('\\', '/');
-        return rel.EndsWith(".lux", StringComparison.OrdinalIgnoreCase) ? rel[..^4] : rel;
+        return rel.EndsWith(".neb", StringComparison.OrdinalIgnoreCase) ? rel[..^4] : rel;
     }
 
     private static string SanitizeAppName(string name)
@@ -1627,7 +1630,7 @@ internal static class Program
 
     private static void WriteLauncherCsproj(
         string tempDir, string appName, string rid, bool aot,
-        string luxRuntimeDll, List<BundleModule> modules)
+        string nebraRuntimeDll, List<BundleModule> modules)
     {
         var sb = new StringBuilder();
         sb.AppendLine("<Project Sdk=\"Microsoft.NET.Sdk\">");
@@ -1651,7 +1654,7 @@ internal static class Program
         }
         sb.AppendLine("  </PropertyGroup>");
         sb.AppendLine("  <ItemGroup>");
-        sb.AppendLine($"    <Reference Include=\"Lux.Runtime\"><HintPath>{luxRuntimeDll}</HintPath></Reference>");
+        sb.AppendLine($"    <Reference Include=\"Nebra.Runtime\"><HintPath>{nebraRuntimeDll}</HintPath></Reference>");
         sb.AppendLine("    <PackageReference Include=\"KeraLua\" Version=\"1.4.9\" />");
         sb.AppendLine("  </ItemGroup>");
         sb.AppendLine("  <ItemGroup>");
@@ -1667,7 +1670,7 @@ internal static class Program
     private static void WriteLauncherProgram(string tempDir, List<BundleModule> modules, string entryModule)
     {
         var sb = new StringBuilder();
-        sb.AppendLine("using Lux.Runtime;");
+        sb.AppendLine("using Nebra.Runtime;");
         sb.AppendLine();
         sb.AppendLine("internal static class Program");
         sb.AppendLine("{");
@@ -1683,7 +1686,7 @@ internal static class Program
         sb.AppendLine();
         sb.AppendLine("    public static int Main(string[] args)");
         sb.AppendLine("    {");
-        sb.AppendLine("        using var rt = new LuxRuntime();");
+        sb.AppendLine("        using var rt = new NebraRuntime();");
         sb.AppendLine("        var asm = typeof(Program).Assembly;");
         sb.AppendLine("        foreach (var (mod, res) in _modules)");
         sb.AppendLine("        {");
@@ -1734,11 +1737,11 @@ internal static class Program
         var noCache = args.Contains("--no-cache");
         var (allowAll, allowList) = ParseAllowScripts(args);
 
-        var configPath = Path.Combine(Environment.CurrentDirectory, "lux.toml");
+        var configPath = Path.Combine(Environment.CurrentDirectory, "nebra.toml");
         var config = Config.LoadFromFile(configPath);
         if (config == null)
         {
-            await Console.Error.WriteLineAsync("error: lux.toml not found in current directory. Run 'lux init' first.");
+            await Console.Error.WriteLineAsync("error: nebra.toml not found in current directory. Run 'nebra init' first.");
             return 1;
         }
 
@@ -1788,7 +1791,7 @@ internal static class Program
 
         if (spec == null)
         {
-            await Console.Error.WriteLineAsync("error: missing template specifier. Usage: lux create <spec_or_url> [dir]");
+            await Console.Error.WriteLineAsync("error: missing template specifier. Usage: nebra create <spec_or_url> [dir]");
             return 1;
         }
 
@@ -1808,10 +1811,10 @@ internal static class Program
         switch (sub)
         {
             case "refresh":
-                await Console.Error.WriteLineAsync("warning: `lux registry refresh` has moved to `lux pm refresh-registry`.");
+                await Console.Error.WriteLineAsync("warning: `nebra registry refresh` has moved to `nebra pm refresh-registry`.");
                 return await RunPmRefreshRegistry();
             default:
-                await Console.Error.WriteLineAsync("Usage: lux pm refresh-registry");
+                await Console.Error.WriteLineAsync("Usage: nebra pm refresh-registry");
                 return 1;
         }
     }
@@ -1819,7 +1822,7 @@ internal static class Program
     /// <summary>
     /// Package-manager utility subcommands. Currently only <c>prune</c>, which
     /// wipes the on-disk caches so the next <c>install</c> / <c>create</c>
-    /// re-fetches from origin. Use <c>lux pm prune</c> when a package was
+    /// re-fetches from origin. Use <c>nebra pm prune</c> when a package was
     /// republished under the same ref (force-pushed tag, mutable branch) and
     /// the cached snapshot is now stale.
     /// </summary>
@@ -1838,12 +1841,12 @@ internal static class Program
     private static int RunPmHelp()
     {
         Console.WriteLine("Usage:");
-        Console.WriteLine("  lux pm prune                  Wipe ALL cached bare clones, snapshots and tmp staging.");
-        Console.WriteLine("  lux pm prune <git-spec>       Wipe the bare clone + every cached snapshot for one repo");
-        Console.WriteLine("                                (e.g. `lux pm prune github:LuaLux/nanos-world-types`).");
-        Console.WriteLine("  lux pm update                 Re-resolve every dependency against origin and rewrite the lockfile.");
-        Console.WriteLine("  lux pm update <name>          Re-resolve only the named dependency.");
-        Console.WriteLine("  lux pm refresh-registry       Refresh the cached alias registry index.");
+        Console.WriteLine("  nebra pm prune                  Wipe ALL cached bare clones, snapshots and tmp staging.");
+        Console.WriteLine("  nebra pm prune <git-spec>       Wipe the bare clone + every cached snapshot for one repo");
+        Console.WriteLine("                                (e.g. `nebra pm prune github:nebra-lang/nanos-world-types`).");
+        Console.WriteLine("  nebra pm update                 Re-resolve every dependency against origin and rewrite the lockfile.");
+        Console.WriteLine("  nebra pm update <name>          Re-resolve only the named dependency.");
+        Console.WriteLine("  nebra pm refresh-registry       Refresh the cached alias registry index.");
         return 0;
     }
 
@@ -1857,15 +1860,15 @@ internal static class Program
     /// </summary>
     private static async Task<int> RunPmUpdate(string[] args)
     {
-        var configPath = Path.Combine(Environment.CurrentDirectory, "lux.toml");
+        var configPath = Path.Combine(Environment.CurrentDirectory, "nebra.toml");
         var config = Config.LoadFromFile(configPath);
         if (config == null)
         {
-            await Console.Error.WriteLineAsync("error: lux.toml not found in current directory. Run 'lux init' first.");
+            await Console.Error.WriteLineAsync("error: nebra.toml not found in current directory. Run 'nebra init' first.");
             return 1;
         }
 
-        var lockPath = Path.Combine(Environment.CurrentDirectory, "lux.lock");
+        var lockPath = Path.Combine(Environment.CurrentDirectory, "nebra.lock");
         var existing = Lockfile.Load(lockPath);
 
         if (args.Length == 0)
@@ -1906,7 +1909,7 @@ internal static class Program
                 existing.Save(lockPath);
                 if (dropped == 0)
                 {
-                    Console.WriteLine("Nothing dropped; install will be a no-op unless a new dep is declared in lux.toml.");
+                    Console.WriteLine("Nothing dropped; install will be a no-op unless a new dep is declared in nebra.toml.");
                 }
             }
         }
@@ -1943,9 +1946,9 @@ internal static class Program
         if (args.Length == 0)
         {
             return PrunePaths(
-                ("git cache",     LuxHome.GitCacheRoot),
-                ("package store", LuxHome.StoreRoot),
-                ("tmp staging",   LuxHome.TmpRoot));
+                ("git cache",     NebraHome.GitCacheRoot),
+                ("package store", NebraHome.StoreRoot),
+                ("tmp staging",   NebraHome.TmpRoot));
         }
 
         PackageSpec spec;
@@ -1958,12 +1961,12 @@ internal static class Program
 
         if (spec.Kind != SpecKind.Git || spec.Host == null || spec.Owner == null || spec.Repo == null)
         {
-            Console.Error.WriteLine("error: `lux pm prune <spec>` requires a git specifier (github:owner/repo, gitlab:..., git+url).");
+            Console.Error.WriteLine("error: `nebra pm prune <spec>` requires a git specifier (github:owner/repo, gitlab:..., git+url).");
             return 1;
         }
 
-        var barePath = LuxHome.BareClonePath(spec.Host, spec.Owner, spec.Repo);
-        var storeRepoDir = Path.GetDirectoryName(LuxHome.PackagePath(spec.Host, spec.Owner, spec.Repo, "x"))!;
+        var barePath = NebraHome.BareClonePath(spec.Host, spec.Owner, spec.Repo);
+        var storeRepoDir = Path.GetDirectoryName(NebraHome.PackagePath(spec.Host, spec.Owner, spec.Repo, "x"))!;
         return PrunePaths(
             ($"bare clone {spec.Host}/{spec.Owner}/{spec.Repo}", barePath),
             ($"snapshots {spec.Host}/{spec.Owner}/{spec.Repo}", storeRepoDir));
@@ -2047,15 +2050,15 @@ internal static class Program
 
         if (spec == null)
         {
-            await Console.Error.WriteLineAsync("error: missing package specifier. Usage: lux add <spec> [--dev|--peer]");
+            await Console.Error.WriteLineAsync("error: missing package specifier. Usage: nebra add <spec> [--dev|--peer]");
             return 1;
         }
 
-        var configPath = Path.Combine(Environment.CurrentDirectory, "lux.toml");
+        var configPath = Path.Combine(Environment.CurrentDirectory, "nebra.toml");
         var config = Config.LoadFromFile(configPath);
         if (config == null)
         {
-            await Console.Error.WriteLineAsync("error: lux.toml not found in current directory. Run 'lux init' first.");
+            await Console.Error.WriteLineAsync("error: nebra.toml not found in current directory. Run 'nebra init' first.");
             return 1;
         }
 
@@ -2072,16 +2075,16 @@ internal static class Program
     {
         if (args.Length == 0)
         {
-            await Console.Error.WriteLineAsync("error: missing package name. Usage: lux remove <name>");
+            await Console.Error.WriteLineAsync("error: missing package name. Usage: nebra remove <name>");
             return 1;
         }
         var name = args[0];
 
-        var configPath = Path.Combine(Environment.CurrentDirectory, "lux.toml");
+        var configPath = Path.Combine(Environment.CurrentDirectory, "nebra.toml");
         var config = Config.LoadFromFile(configPath);
         if (config == null)
         {
-            await Console.Error.WriteLineAsync("error: lux.toml not found in current directory.");
+            await Console.Error.WriteLineAsync("error: nebra.toml not found in current directory.");
             return 1;
         }
 
@@ -2092,7 +2095,7 @@ internal static class Program
     private static int RunUnknown(string command)
     {
         Console.Error.WriteLine($"Unknown command: {command}");
-        Console.Error.WriteLine("Run 'lux help' for available commands.");
+        Console.Error.WriteLine("Run 'nebra help' for available commands.");
         return 1;
     }
 

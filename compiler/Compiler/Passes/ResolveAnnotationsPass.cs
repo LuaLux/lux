@@ -1,13 +1,13 @@
-using Lux.Compiler.Annotations;
-using Lux.Configuration;
-using Lux.Diagnostics;
-using Lux.IR;
-using Lux.PackageManager;
+using Nebra.Compiler.Annotations;
+using Nebra.Configuration;
+using Nebra.Diagnostics;
+using Nebra.IR;
+using Nebra.PackageManager;
 
-namespace Lux.Compiler.Passes;
+namespace Nebra.Compiler.Passes;
 
 /// <summary>
-/// Build-scoped pass that discovers annotation definition files (<c>.lux</c>) from
+/// Build-scoped pass that discovers annotation definition files (<c>.neb</c>) from
 /// <c>Config.Annotations</c>, sub-compiles each to Lua, extracts their <c>meta</c>
 /// declaration and registers them in an <see cref="AnnotationRegistry"/> stored on
 /// <c>PassContext.Cache</c>. Consumed by <see cref="ApplyAnnotationsPass"/>.
@@ -27,7 +27,7 @@ public sealed class ResolveAnnotationsPass() : Pass(PassName, PassScope.PerBuild
             var fullPath = Path.IsPathRooted(entry) ? entry : Path.Combine(baseDir, entry);
             if (Directory.Exists(fullPath))
             {
-                foreach (var file in Directory.EnumerateFiles(fullPath, "*.lux", SearchOption.AllDirectories))
+                foreach (var file in Directory.EnumerateFiles(fullPath, "*.neb", SearchOption.AllDirectories))
                     LoadAnnotationFile(context, registry, file);
             }
             else if (File.Exists(fullPath))
@@ -48,9 +48,9 @@ public sealed class ResolveAnnotationsPass() : Pass(PassName, PassScope.PerBuild
             foreach (var root in roots)
             {
                 if (!Directory.Exists(root)) continue;
-                foreach (var file in Directory.EnumerateFiles(root, "*.lux", SearchOption.AllDirectories))
+                foreach (var file in Directory.EnumerateFiles(root, "*.neb", SearchOption.AllDirectories))
                 {
-                    if (file.EndsWith(".d.lux", StringComparison.OrdinalIgnoreCase)) continue;
+                    if (file.EndsWith(".d.neb", StringComparison.OrdinalIgnoreCase)) continue;
                     if (!LooksLikeAnnotationFile(file)) continue;
                     LoadAnnotationFile(context, registry, file);
                 }
@@ -69,7 +69,7 @@ public sealed class ResolveAnnotationsPass() : Pass(PassName, PassScope.PerBuild
     }
 
     /// <summary>
-    /// Cheap textual heuristic to avoid sub-compiling every <c>.lux</c> file in a package. A
+    /// Cheap textual heuristic to avoid sub-compiling every <c>.neb</c> file in a package. A
     /// valid annotation file must export an <c>annotation</c> table and an <c>apply</c> function.
     /// </summary>
     private static bool LooksLikeAnnotationFile(string path)
@@ -99,7 +99,7 @@ public sealed class ResolveAnnotationsPass() : Pass(PassName, PassScope.PerBuild
             Libs = [..ctx.Config.Code.Libs],
         };
 
-        var subCompiler = new LuxCompiler { Config = subConfig };
+        var subCompiler = new NebraCompiler { Config = subConfig };
         subCompiler.AddSource(path);
 
         var pm = new PassManager();
@@ -171,10 +171,10 @@ public sealed class ResolveAnnotationsPass() : Pass(PassName, PassScope.PerBuild
         try { stream = new Antlr4.Runtime.AntlrInputStream(source); }
         catch { return null; }
 
-        var lexer = new LuxLexer(stream);
+        var lexer = new NebraLexer(stream);
         lexer.RemoveErrorListeners();
         var tokens = new Antlr4.Runtime.CommonTokenStream(lexer);
-        var parser = new LuxParser(tokens);
+        var parser = new NebraParser(tokens);
         parser.RemoveErrorListeners();
         var visitor = new IRVisitor(filePath, nodeAlloc, diag, config);
         if (visitor.Visit(parser.script()) is not IRScript script) return null;

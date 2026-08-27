@@ -1,0 +1,172 @@
+-- Runtime reflection, exposed by the Nebra runtime as the global `reflect`.
+--
+-- The compiler records metadata about the program's declarations into a shared
+-- registry (`_G.__nebra_reflect`); this library reads that registry at runtime.
+-- What gets recorded is controlled by the `[reflection]` config section:
+--   mode = "all"        every declaration (default)
+--   mode = "annotated"  only declarations carrying @reflectable
+--   mode = "none"       nothing (zero overhead; reflect queries return empty)
+--
+-- Every registry entry is keyed by a stable id of the form `<module>::<Name>`.
+-- Classes, enums, functions and variables carry a live `ref` handle; interfaces
+-- are erased at runtime and therefore have no `ref`.
+
+-- A structural description of a type. The `kind` field selects which of the
+-- remaining fields are present:
+--   "primitive"  name           ("number", "string", "boolean", "nil", ...)
+--   "named"      id             (registry id; resolve with reflect.get)
+--   "array"      element
+--   "map"        key, value
+--   "union"      types
+--   "variadic"   element
+--   "tuple"      elements
+--   "function"   params, returns
+declare interface TypeDesc
+    kind: string
+    name: string?
+    id: string?
+    element: TypeDesc?
+    key: TypeDesc?
+    value: TypeDesc?
+    types: TypeDesc[]?
+    elements: TypeDesc[]?
+    params: TypeDesc[]?
+    returns: TypeDesc?
+end
+
+-- An annotation preserved for runtime inspection. `args` is a plain table that
+-- mixes positional entries (array part) with named entries (`name = value`).
+declare interface AnnotationInfo
+    name: string
+    args: any
+end
+
+declare interface ParamInfo
+    name: string
+    type: TypeDesc
+end
+
+declare interface FieldInfo
+    name: string
+    type: TypeDesc
+    hasDefault: boolean?
+    isProtected: boolean?
+    annotations: AnnotationInfo[]?
+end
+
+declare interface MethodInfo
+    name: string
+    params: ParamInfo[]
+    returns: TypeDesc
+    isStatic: boolean?
+    isAbstract: boolean?
+    isOverride: boolean?
+    isAsync: boolean?
+    annotations: AnnotationInfo[]?
+end
+
+-- Registry entry for a class. `ref` is the live class table (call `.new` on it,
+-- or use reflect.create). `base` and `interfaces` hold registry ids.
+declare interface ClassInfo
+    kind: string
+    name: string
+    isAbstract: boolean?
+    base: string?
+    interfaces: string[]?
+    fields: FieldInfo[]
+    methods: MethodInfo[]
+    annotations: AnnotationInfo[]?
+    ref: any
+end
+
+-- Registry entry for an interface. Interfaces are erased at runtime, so there is
+-- no `ref`; `bases` holds the registry ids of the base interfaces.
+declare interface InterfaceInfo
+    kind: string
+    name: string
+    bases: string[]?
+    fields: FieldInfo[]
+    methods: MethodInfo[]
+    annotations: AnnotationInfo[]?
+end
+
+declare interface EnumMemberInfo
+    name: string
+    value: any
+end
+
+-- Registry entry for an enum. `ref` is the live enum table.
+declare interface EnumInfo
+    kind: string
+    name: string
+    members: EnumMemberInfo[]
+    annotations: AnnotationInfo[]?
+    ref: any
+end
+
+-- Registry entry for a top-level function. `ref` is the live function; call it
+-- directly or via reflect.invoke.
+declare interface FunctionInfo
+    kind: string
+    name: string
+    params: ParamInfo[]
+    returns: TypeDesc
+    annotations: AnnotationInfo[]?
+    ref: any
+end
+
+-- Registry entry for a top-level variable. `ref` is a getter closure returning
+-- the variable's current value.
+declare interface VariableInfo
+    kind: string
+    name: string
+    type: TypeDesc
+    ref: () -> any
+end
+
+declare interface ReflectLib
+    -- Compiler intrinsic. Resolves the metadata for its argument using the
+    -- argument's static type: a class/interface/enum (or a bare type name)
+    -- yields its registry entry; a primitive yields a constant TypeDesc; an
+    -- `any` argument falls back to a runtime lookup.
+    function Of(value: any): any
+
+    -- Looks up a registry entry by its `<module>::<Name>` id.
+    function get(id: string): any
+
+    -- Resolves the runtime metadata of a value from its actual type. Returns a
+    -- ClassInfo/EnumInfo for reflected instances, or a primitive TypeDesc.
+    function typeOf(value: any): any
+    function dynamic(value: any): any
+
+    -- Every registry entry, in no particular order.
+    function all(): any[]
+
+    function classes(): ClassInfo[]
+    function interfaces(): InterfaceInfo[]
+    function enums(): EnumInfo[]
+    function functions(): FunctionInfo[]
+    function variables(): VariableInfo[]
+
+    -- The live handle for an id (class table, function, enum table, or a
+    -- variable getter closure), or nil when the id is unknown.
+    function ref(id: string): any
+
+    -- Constructs an instance from a ClassInfo, forwarding the extra arguments to
+    -- its constructor.
+    function create(info: any, ...: any): any
+
+    -- Calls a FunctionInfo's underlying function with the given arguments.
+    function invoke(info: any, ...: any): any
+
+    -- Every class whose `interfaces` list contains the given interface id.
+    function implementorsOf(id: string): ClassInfo[]
+
+    -- Annotation helpers. `decl` is any registry entry (or field/method
+    -- descriptor) carrying an `annotations` list.
+    function annotationsOf(decl: any): AnnotationInfo[]
+    function annotation(decl: any, name: string): AnnotationInfo?
+    function hasAnnotation(decl: any, name: string): boolean
+end
+
+declare reflect: ReflectLib

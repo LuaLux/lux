@@ -1,10 +1,10 @@
 using Tomlyn.Parsing;
 using Tomlyn.Syntax;
 
-namespace Lux.PackageManager;
+namespace Nebra.PackageManager;
 
 /// <summary>
-/// In-place editor for <c>lux.toml</c> that preserves user formatting, comments and trivia
+/// In-place editor for <c>nebra.toml</c> that preserves user formatting, comments and trivia
 /// by mutating a <see cref="DocumentSyntax"/> tree instead of re-serializing via reflection.
 /// </summary>
 internal static class ManifestEditor

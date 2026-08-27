@@ -1,4 +1,4 @@
-namespace Lux.IR;
+namespace Nebra.IR;
 
 public enum BinaryOp
 {

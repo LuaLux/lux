@@ -1,8 +1,8 @@
 using System.Text;
-using Lux.Runtime.Bindings;
+using Nebra.Runtime.Bindings;
 using SysConsole = System.Console;
 
-namespace Lux.Runtime.Library;
+namespace Nebra.Runtime.Library;
 
 /// <summary>
 /// Terminal/prompt utilities exposed to Lua as the <c>console</c> global.
@@ -10,7 +10,7 @@ namespace Lux.Runtime.Library;
 /// select, multiselect, spinner, progress bar). Non-interactive streams fall back
 /// to defaults and print a warning; prompts without defaults error out.
 /// </summary>
-[LuxExport("console")]
+[NebraExport("console")]
 public sealed class ConsoleLib
 {
     private const string Reset = "\x1b[0m";
@@ -24,29 +24,29 @@ public sealed class ConsoleLib
 
     private static bool IsInteractive => !SysConsole.IsInputRedirected && !SysConsole.IsOutputRedirected;
 
-    [LuxExport("print")]
+    [NebraExport("print")]
     public static void Print(string message) => SysConsole.WriteLine(message);
 
-    [LuxExport("info")]
+    [NebraExport("info")]
     public static void Info(string message) => SysConsole.WriteLine($"{Cyan}ℹ{Reset} {message}");
 
-    [LuxExport("success")]
+    [NebraExport("success")]
     public static void Success(string message) => SysConsole.WriteLine($"{Green}✓{Reset} {message}");
 
-    [LuxExport("warn")]
+    [NebraExport("warn")]
     public static void Warn(string message) => SysConsole.WriteLine($"{Yellow}⚠{Reset} {message}");
 
-    [LuxExport("error")]
+    [NebraExport("error")]
     public static void ErrorMsg(string message) => SysConsole.WriteLine($"{Red}✗{Reset} {message}");
 
-    [LuxExport("header")]
+    [NebraExport("header")]
     public static void Header(string message)
         => SysConsole.WriteLine($"{Bold}{Magenta}{message}{Reset}");
 
-    [LuxExport("dim")]
+    [NebraExport("dim")]
     public static void DimMsg(string message) => SysConsole.WriteLine($"{Dim}{message}{Reset}");
 
-    [LuxExport("blank")]
+    [NebraExport("blank")]
     public static void Blank() => SysConsole.WriteLine();
 
     /// <summary>
@@ -54,7 +54,7 @@ public sealed class ConsoleLib
     /// an empty input falls back to it. Non-interactive runs return the default
     /// (or empty string) without blocking.
     /// </summary>
-    [LuxExport("input")]
+    [NebraExport("input")]
     public static string Input(string prompt, string? defaultValue = null)
     {
         var suffix = defaultValue != null ? $" {Dim}[{defaultValue}]{Reset}" : "";
@@ -76,7 +76,7 @@ public sealed class ConsoleLib
     /// Reads a line from stdin with masked echo. Falls back to a plain read
     /// when stdin is redirected.
     /// </summary>
-    [LuxExport("password")]
+    [NebraExport("password")]
     public static string Password(string prompt)
     {
         SysConsole.Write($"{Cyan}?{Reset} {prompt} ");
@@ -110,7 +110,7 @@ public sealed class ConsoleLib
     /// Yes/no prompt. Accepts y/yes/n/no (case-insensitive). Blank input uses
     /// <paramref name="defaultValue"/>.
     /// </summary>
-    [LuxExport("confirm")]
+    [NebraExport("confirm")]
     public static bool Confirm(string prompt, bool defaultValue = false)
     {
         var hint = defaultValue ? "[Y/n]" : "[y/N]";
@@ -143,7 +143,7 @@ public sealed class ConsoleLib
     /// Arrow-key select. Returns the chosen option as a string. When stdin is
     /// redirected, returns the option at <paramref name="defaultIndex"/>.
     /// </summary>
-    [LuxExport("select")]
+    [NebraExport("select")]
     public static string Select(string prompt, IList<object?> options, long defaultIndex = 1)
     {
         var opts = options.Select(o => o?.ToString() ?? "").ToList();
@@ -192,7 +192,7 @@ public sealed class ConsoleLib
     /// Multi-select via Space (toggle) and Enter (confirm). Returns a list of
     /// selected option strings. When stdin is redirected, returns the defaults.
     /// </summary>
-    [LuxExport("multiselect")]
+    [NebraExport("multiselect")]
     public static List<object?> MultiSelect(string prompt, IList<object?> options, IList<object?>? defaults = null)
     {
         var opts = options.Select(o => o?.ToString() ?? "").ToList();
@@ -259,14 +259,14 @@ public sealed class ConsoleLib
     /// to finalize. When the terminal is non-interactive, the spinner prints its
     /// message once and the returned handle is a no-op.
     /// </summary>
-    [LuxExport("spinner")]
+    [NebraExport("spinner")]
     public static Spinner StartSpinner(string message) => new(message, IsInteractive);
 
     /// <summary>
     /// Starts a progress bar and returns a handle. Call <c>:update(current)</c>,
     /// <c>:increment()</c>, or <c>:finish()</c> to advance.
     /// </summary>
-    [LuxExport("progress")]
+    [NebraExport("progress")]
     public static ProgressBar StartProgress(long total, string? message = null)
         => new(total, message ?? "", IsInteractive);
 
@@ -339,16 +339,16 @@ public sealed class Spinner
         _thread.Start();
     }
 
-    [LuxExport("update")]
+    [NebraExport("update")]
     public void Update(string message) => _message = message;
 
-    [LuxExport("stop")]
+    [NebraExport("stop")]
     public void Stop(bool success = true, string? message = null) => Finalize(success, message);
 
-    [LuxExport("succeed")]
+    [NebraExport("succeed")]
     public void Succeed(string? message = null) => Finalize(true, message);
 
-    [LuxExport("fail")]
+    [NebraExport("fail")]
     public void Fail(string? message = null) => Finalize(false, message);
 
     private void Finalize(bool success, string? message)
@@ -401,7 +401,7 @@ public sealed class ProgressBar
         Render();
     }
 
-    [LuxExport("update")]
+    [NebraExport("update")]
     public void Update(long current, string? message = null)
     {
         _current = current;
@@ -409,21 +409,21 @@ public sealed class ProgressBar
         Render();
     }
 
-    [LuxExport("increment")]
+    [NebraExport("increment")]
     public void Increment(long step = 1)
     {
         _current += step;
         Render();
     }
 
-    [LuxExport("setMessage")]
+    [NebraExport("setMessage")]
     public void SetMessage(string message)
     {
         _message = message;
         Render();
     }
 
-    [LuxExport("finish")]
+    [NebraExport("finish")]
     public void Finish(string? message = null)
     {
         if (Interlocked.Exchange(ref _finished, 1) != 0) return;
