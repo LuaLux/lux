@@ -29,6 +29,14 @@ public sealed class InferTypesPass() : Pass(PassName, PassScope.PerBuild)
     /// declared it, so the check needs to know where it stands.
     /// </summary>
     private ClassType? _currentClass;
+
+    /// <summary>
+    /// How many loops enclose the statement being resolved, within the current function. A
+    /// <c>break</c> carrying a depth may not ask for more levels than this. The count is reset
+    /// when a function body is entered, since a loop outside that function is not one the
+    /// <c>break</c> can leave.
+    /// </summary>
+    private int _loopDepth;
     private readonly HashSet<NodeID> _registeredExtendDecls = [];
 
     /// <summary>
@@ -355,6 +363,26 @@ public sealed class InferTypesPass() : Pass(PassName, PassScope.PerBuild)
     }
 
     /// <summary>
+    /// Resolves a function body: the same walk as <see cref="ResolveStmts"/>, but with the
+    /// enclosing-loop count reset for its duration. A loop around the function is not one a
+    /// <c>break</c> inside it can leave, so it must not count towards the depth a break may ask
+    /// for.
+    /// </summary>
+    private void ResolveFunctionBody(PassContext pc, List<Stmt> stmts, Stmt? tail = null)
+    {
+        var enclosingLoops = _loopDepth;
+        _loopDepth = 0;
+        try
+        {
+            ResolveStmts(pc, stmts, tail);
+        }
+        finally
+        {
+            _loopDepth = enclosingLoops;
+        }
+    }
+
+    /// <summary>
     /// Resolves a block statement by statement, followed by its optional trailing statement (the
     /// tail <c>return</c>, which the HIR keeps outside the body list). Two flow-sensitive effects
     /// are applied while walking it: statements that follow one which can never fall through are
@@ -430,7 +458,7 @@ public sealed class InferTypesPass() : Pass(PassName, PassScope.PerBuild)
                 SynthesizeExpr(pc, exprStmt.Expression);
                 break;
             case BreakStmt breakStmt:
-                if (breakStmt.Depth < 1)
+                if (breakStmt.Depth < 1 || breakStmt.Depth > _loopDepth)
                 {
                     pc.Diag.Report(breakStmt.Span, DiagnosticCode.ErrInvalidControlFlowDepth, "break");
                 }
@@ -443,10 +471,14 @@ public sealed class InferTypesPass() : Pass(PassName, PassScope.PerBuild)
                 break;
             case WhileStmt whileStmt:
                 SynthesizeExpr(pc, whileStmt.Condition);
+                _loopDepth++;
                 ResolveStmts(pc, whileStmt.Body);
+                _loopDepth--;
                 break;
             case RepeatStmt repeatStmt:
+                _loopDepth++;
                 ResolveStmts(pc, repeatStmt.Body);
+                _loopDepth--;
                 SynthesizeExpr(pc, repeatStmt.Condition);
                 break;
             case IfStmt ifStmt:
@@ -499,7 +531,9 @@ public sealed class InferTypesPass() : Pass(PassName, PassScope.PerBuild)
                 }
 
                 pc.Pkg!.Syms.SetType(nf.VarName.Sym, pc.Types.PrimNumber.ID);
+                _loopDepth++;
                 ResolveStmts(pc, nf.Body);
+                _loopDepth--;
                 break;
             }
             case GenericForStmt gf:
@@ -512,7 +546,9 @@ public sealed class InferTypesPass() : Pass(PassName, PassScope.PerBuild)
 
                 InferGenericForVarTypes(pc, gf, iterTypes);
 
+                _loopDepth++;
                 ResolveStmts(pc, gf.Body);
+                _loopDepth--;
                 break;
             }
             case ReturnStmt returnStmt:
@@ -744,7 +780,7 @@ public sealed class InferTypesPass() : Pass(PassName, PassScope.PerBuild)
             classType.ConstructorSide = ctorSide;
 
             CheckSuperCall(pc, cd, classType);
-            ResolveStmts(pc, cd.Constructor.Body, cd.Constructor.ReturnStmt);
+            ResolveFunctionBody(pc, cd.Constructor.Body, cd.Constructor.ReturnStmt);
         }
 
         foreach (var method in cd.Methods)
@@ -824,7 +860,7 @@ public sealed class InferTypesPass() : Pass(PassName, PassScope.PerBuild)
 
             if (!method.IsAbstract && !cd.IsDeclare)
             {
-                ResolveStmts(pc, method.Body, method.ReturnStmt);
+                ResolveFunctionBody(pc, method.Body, method.ReturnStmt);
 
                 var collected = CollectReturnTypes(pc, method.Body);
                 if (method.ReturnStmt != null)
@@ -868,7 +904,7 @@ public sealed class InferTypesPass() : Pass(PassName, PassScope.PerBuild)
                 pc.Diag.Report(accessor.Span, Diagnostics.DiagnosticCode.ErrOverrideNoParent, accessor.Name.Name);
             }
 
-            ResolveStmts(pc, accessor.Body, accessor.ReturnStmt);
+            ResolveFunctionBody(pc, accessor.Body, accessor.ReturnStmt);
         }
 
         CheckInterfaceImplementation(pc, cd, classType);
@@ -1360,7 +1396,7 @@ public sealed class InferTypesPass() : Pass(PassName, PassScope.PerBuild)
                 ifaceType.DefaultMethodNodes[method.Name.Name] = method;
 
                 if (method.IsAsync) _asyncDepth++;
-                ResolveStmts(pc, method.Body!, method.ReturnStmt);
+                ResolveFunctionBody(pc, method.Body!, method.ReturnStmt);
 
                 var collected = CollectReturnTypes(pc, method.Body!);
                 if (method.ReturnStmt != null)
@@ -1445,7 +1481,7 @@ public sealed class InferTypesPass() : Pass(PassName, PassScope.PerBuild)
                 ? GetType(pc, method.ReturnType.ResolvedType) : pc.Types.PrimNil;
 
             if (method.IsAsync) _asyncDepth++;
-            ResolveStmts(pc, method.Body, method.ReturnStmt);
+            ResolveFunctionBody(pc, method.Body, method.ReturnStmt);
 
             var collected = CollectReturnTypes(pc, method.Body);
             if (method.ReturnStmt != null)
@@ -1582,7 +1618,7 @@ public sealed class InferTypesPass() : Pass(PassName, PassScope.PerBuild)
             }
         }
 
-        ResolveStmts(pc, body, returnStmt);
+        ResolveFunctionBody(pc, body, returnStmt);
 
         Type returnType;
         if (returnTypeRef != null && returnTypeRef.ResolvedType != TypID.Invalid)
@@ -2336,7 +2372,7 @@ public sealed class InferTypesPass() : Pass(PassName, PassScope.PerBuild)
             }
         }
 
-        ResolveStmts(pc, fde.Body, fde.ReturnStmt);
+        ResolveFunctionBody(pc, fde.Body, fde.ReturnStmt);
 
         Type returnType;
         if (fde.ReturnType != null && fde.ReturnType.ResolvedType != TypID.Invalid)
