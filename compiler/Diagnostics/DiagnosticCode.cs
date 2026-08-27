@@ -101,6 +101,18 @@ public enum DiagnosticCode
     ErrUnreachableAfterNever = 0x1007,
 
     [Level(DiagnosticLevel.Error)]
+    [Category(DiagnosticCategory.Semantic)]
+    [Format("'break {0}' needs 'goto', which the '{1}' target does not have")]
+    [Help("restructure the loops, or raise the target to a Lua version with 'goto'")]
+    ErrMultiLevelBreakUnsupported = 0x1008,
+
+    [Level(DiagnosticLevel.Error)]
+    [Category(DiagnosticCategory.Semantic)]
+    [Format("Bitwise operators are not available on the '{0}' target")]
+    [Help("raise the target to a Lua version with bitwise operators, or use the LuaJIT target where they lower to the 'bit' library")]
+    ErrBitwiseUnsupported = 0x1009,
+
+    [Level(DiagnosticLevel.Error)]
     [Category(DiagnosticCategory.Syntax)]
     [Format("Alternative boolean operator '{0}' is disabled in the configuration. Enable [code] alt_boolean_operators = true to use it, or use '{1}' instead.")]
     ErrAltBooleanOperatorsDisabled = 0x0006,

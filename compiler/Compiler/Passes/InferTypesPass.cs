@@ -462,6 +462,11 @@ public sealed class InferTypesPass() : Pass(PassName, PassScope.PerBuild)
                 {
                     pc.Diag.Report(breakStmt.Span, DiagnosticCode.ErrInvalidControlFlowDepth, "break");
                 }
+                else if (breakStmt.Depth > 1 && !Codegen.LuaFeatureSet.For(pc.Config.Target).HasGoto)
+                {
+                    pc.Diag.Report(breakStmt.Span, DiagnosticCode.ErrMultiLevelBreakUnsupported,
+                        breakStmt.Depth, pc.Config.Target);
+                }
                 break;
             case LabelStmt:
             case GotoStmt:
@@ -2068,9 +2073,21 @@ public sealed class InferTypesPass() : Pass(PassName, PassScope.PerBuild)
             case BinaryOp.BitwiseXor:
             case BinaryOp.LShift:
             case BinaryOp.RShift:
+            {
                 EnsureAssignable(pc, bin.Left.Span, tt.PrimNumber.ID, l);
                 EnsureAssignable(pc, bin.Right.Span, tt.PrimNumber.ID, r);
+
+                // Codegen has no lowering for these unless the target has the operators or the
+                // LuaJIT bit library; without one it used to emit nothing at all, leaving the
+                // surrounding statement syntactically broken.
+                var features = Codegen.LuaFeatureSet.For(pc.Config.Target);
+                if (!features.HasBitwise && features.BitwiseStyle != Codegen.BitwiseStyle.BitLib)
+                {
+                    pc.Diag.Report(bin.Span, DiagnosticCode.ErrBitwiseUnsupported, pc.Config.Target);
+                }
+
                 return tt.PrimNumber.ID;
+            }
             case BinaryOp.Eq:
             case BinaryOp.Neq:
                 return tt.PrimBool.ID;
