@@ -1,4 +1,4 @@
-using Nebra.Diagnostics;
+﻿using Nebra.Diagnostics;
 
 namespace Nebra.IR;
 
@@ -149,6 +149,7 @@ public sealed class ExtendDecl(
 {
     public TypeRef TargetType { get; } = targetType;
     public List<ExtensionMethodNode> Methods { get; } = methods;
+    public List<Annotation> Annotations { get; set; } = [];
 }
 
 public sealed class InterfaceDecl(

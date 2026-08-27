@@ -675,12 +675,16 @@ internal partial class IRVisitor
             var (parameters, returnType, body, ret) = VisitFuncBodyContent(m.funcBody());
             var node = new ExtensionMethodNode(methodName, parameters, returnType, body, ret, isAsync, SpanFromCtx(m))
             {
-                TypeParams = VisitTypeParamListContent(m.funcBody().typeParamList())
+                TypeParams = VisitTypeParamListContent(m.funcBody().typeParamList()),
+                Annotations = VisitAnnotationListContent(m.annotationList())
             };
             methods.Add(node);
         }
 
-        return new ExtendDecl(NewNodeID, SpanFromCtx(context), target, methods);
+        return new ExtendDecl(NewNodeID, SpanFromCtx(context), target, methods)
+        {
+            Annotations = VisitAnnotationListContent(context.annotationList())
+        };
     }
 
     public override Node VisitInterfaceDecl(NebraParser.InterfaceDeclContext context)

@@ -62,7 +62,9 @@ class Widget implements Configurable
     end
 end
 
+@side("shared")
 extend number
+    @side("shared")
     function doubled(): number
         local mut acc: number = 0
         acc = self * 2

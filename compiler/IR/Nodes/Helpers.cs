@@ -189,6 +189,7 @@ public sealed class ExtensionMethodNode(
     public bool IsAsync { get; } = isAsync;
     public TextSpan Span { get; } = span;
     public List<TypeParamDef> TypeParams { get; set; } = [];
+    public List<Annotation> Annotations { get; set; } = [];
 }
 
 public sealed class InterfaceFieldNode(NameRef name, TypeRef typeAnnotation, TextSpan span)

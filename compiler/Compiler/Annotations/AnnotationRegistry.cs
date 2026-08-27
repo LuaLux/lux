@@ -1,4 +1,4 @@
-namespace Nebra.Compiler.Annotations;
+﻿namespace Nebra.Compiler.Annotations;
 
 /// <summary>
 /// Target kinds an annotation can be applied to. Must match the <c>AnnotationTarget</c>
@@ -20,6 +20,8 @@ public enum AnnotationTargetKind
     Interface,
     InterfaceMethod,
     InterfaceField,
+    Extend,
+    ExtensionMethod,
 }
 
 /// <summary>

@@ -358,11 +358,11 @@ interfaceMember
 // The method call lowers at compile time to a plain function call, so it works on any type.
 
 extendDecl
-    : EXTEND typeExpr extendMethod* END
+    : annotationList EXTEND typeExpr extendMethod* END
     ;
 
 extendMethod
-    : ASYNC? FUNCTION NAME funcBody
+    : annotationList ASYNC? FUNCTION NAME funcBody
     ;
 
 exportStat

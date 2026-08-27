@@ -82,6 +82,7 @@ public sealed class ApplyAnnotationsPass()
             ClassDecl cd => cd.Annotations,
             EnumDecl ed => ed.Annotations,
             InterfaceDecl id => id.Annotations,
+            ExtendDecl ed2 => ed2.Annotations,
             _ => [],
         };
 
@@ -253,6 +254,11 @@ public sealed class ApplyAnnotationsPass()
                 break;
             case EnumDecl ed:
                 ProcessAnnotatedList(ctx, registry, ed.Members, m => m.Annotations, AnnotationTargetKind.EnumMember);
+                break;
+            case ExtendDecl ed2:
+                ProcessAnnotatedList(ctx, registry, ed2.Methods, m => m.Annotations,
+                    AnnotationTargetKind.ExtensionMethod);
+                foreach (var m in ed2.Methods) ProcessParameterAnnotations(ctx, registry, m.Parameters);
                 break;
             case FunctionDecl fd:
                 ProcessParameterAnnotations(ctx, registry, fd.Parameters);
@@ -539,6 +545,7 @@ public sealed class ApplyAnnotationsPass()
         ClassDecl => AnnotationTargetKind.Class,
         EnumDecl => AnnotationTargetKind.Enum,
         InterfaceDecl => AnnotationTargetKind.Interface,
+        ExtendDecl => AnnotationTargetKind.Extend,
         _ => AnnotationTargetKind.Function,
     };
 
