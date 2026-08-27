@@ -408,7 +408,10 @@ internal static class Program
         {
             foreach (var file in pkg.Files)
             {
-                if (string.IsNullOrEmpty(file.GeneratedLua)) continue;
+                // A file whose generated chunk is empty is still written: a module holding only
+                // types compiles to nothing, and importers emit a `require` for it regardless, so
+                // omitting the file turns the import into a load-time failure.
+                if (file.GeneratedLua == null || file.IsDeclarationFile) continue;
                 if (file.Filename != null && !IsUnderDirectory(file.Filename, fullBaseDir)) continue;
 
                 var relativePath = Path.GetRelativePath(baseDir, file.Filename ?? "output.lua");

@@ -1,4 +1,4 @@
---- Extension methods declared in their own module, so the suite covers a call emitted in a file
+﻿--- Extension methods declared in their own module, so the suite covers a call emitted in a file
 --- other than the one that declares them.
 
 extend string
@@ -9,4 +9,10 @@ end
 
 export function extensionsLoaded(): boolean
     return true
+end
+
+--- Reflection over the suite's own declarations, so the metadata emission is exercised rather than
+--- merely generated.
+export function reflectedClassCount(): number
+    return #reflect.classes()
 end

@@ -1,0 +1,6 @@
+--- A module holding nothing but a type. It compiles to an empty Lua chunk, so it also covers that
+--- such a file is still written and stays requireable.
+
+export interface TypeOnlyMarker
+    function mark(): string
+end

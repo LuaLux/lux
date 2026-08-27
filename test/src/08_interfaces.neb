@@ -1,6 +1,7 @@
 import { section, expectEq, expect } from "_runner"
 import { Sized } from "08a_interface_defs"
-import { extensionsLoaded } from "08b_extensions"
+import { extensionsLoaded, reflectedClassCount } from "08b_extensions"
+import { TypeOnlyMarker } from "08c_typesonly"
 
 interface Greetable
     function greet(): string
@@ -90,6 +91,12 @@ end
 class InheritedGreeter extends InheritedGreeterBase implements Greetable, Named
 end
 
+class Marked implements TypeOnlyMarker
+    function mark(): string
+        return "marked"
+    end
+end
+
 class SizedBox implements Sized
     function resize(width: number, height: number): string
         return tostring(width) .. "x" .. tostring(height)
@@ -142,6 +149,8 @@ export function run(): nil
 
     expectEq("extend block body runs under the immutability rule", (21):doubled(), 42)
     expect("cross-file extension module loaded", extensionsLoaded())
+    expect("reflection registry reachable", reflectedClassCount() >= 0)
+    expectEq("type-only module stays requireable", (new Marked()):mark(), "marked")
     expectEq("extension declared in another file", ("hi"):exclaim(), "hi!")
 
     local t = new Terse()
