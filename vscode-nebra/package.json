@@ -6,7 +6,7 @@
   "publisher": "DasDarki",
   "license": "MIT",
   "icon": "icon.png",
-  "homepage": "https://github.com/nebra-lang/nebra#readme",
+  "homepage": "https://nebra-lang.github.io",
   "repository": {
     "type": "git",
     "url": "https://github.com/nebra-lang/nebra.git"
@@ -111,5 +111,9 @@
     "@types/vscode": "^1.75.0",
     "@types/node": "^20.0.0",
     "typescript": "^5.5.0"
+  },
+  "galleryBanner": {
+    "color": "#040a14",
+    "theme": "dark"
   }
 }
