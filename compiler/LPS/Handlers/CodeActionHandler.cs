@@ -104,6 +104,7 @@ public sealed class CodeActionHandler(NebraWorkspace workspace) : CodeActionHand
         var col = request.Range.Start.Character + 1;
         var classDecl = FindContainingClass(result.Hir, line, col);
         if (classDecl == null) return;
+        if (classDecl.IsDeclare) return;
         if (classDecl.Name.Sym == SymID.Invalid) return;
         if (!result.Syms.GetByID(classDecl.Name.Sym, out var classSym)) return;
         if (!result.Types.GetByID(classSym.Type, out var rawType) || rawType is not ClassType classType) return;

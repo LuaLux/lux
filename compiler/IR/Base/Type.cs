@@ -100,13 +100,21 @@ public class Type(TypeKind kind)
         {
             case ClassType ct:
                 for (var cur = ct.BaseClass; cur != null; cur = cur.BaseClass)
-                    if (cur.ExtensionMethods.TryGetValue(name, out var bft)) return (bft, cur);
-                foreach (var iface in ct.Interfaces)
                 {
-                    if (iface.ExtensionMethods.TryGetValue(name, out var ift)) return (ift, iface);
-                    foreach (var b in BaseInterfacesOf(iface))
-                        if (b.ExtensionMethods.TryGetValue(name, out var bift)) return (bift, b);
+                    if (cur.ExtensionMethods.TryGetValue(name, out var bft))
+                    {
+                        return (bft, cur);
+                    }
                 }
+
+                foreach (var iface in ImplementedInterfaces(ct))
+                {
+                    if (iface.ExtensionMethods.TryGetValue(name, out var ift))
+                    {
+                        return (ift, iface);
+                    }
+                }
+
                 break;
             case InterfaceType it:
                 foreach (var b in BaseInterfacesOf(it))
@@ -133,13 +141,21 @@ public class Type(TypeKind kind)
         {
             case ClassType ct:
                 for (var cur = ct.BaseClass; cur != null; cur = cur.BaseClass)
-                    foreach (var kv in cur.ExtensionMethods) yield return kv;
-                foreach (var iface in ct.Interfaces)
                 {
-                    foreach (var kv in iface.ExtensionMethods) yield return kv;
-                    foreach (var b in BaseInterfacesOf(iface))
-                        foreach (var kv in b.ExtensionMethods) yield return kv;
+                    foreach (var kv in cur.ExtensionMethods)
+                    {
+                        yield return kv;
+                    }
                 }
+
+                foreach (var iface in ImplementedInterfaces(ct))
+                {
+                    foreach (var kv in iface.ExtensionMethods)
+                    {
+                        yield return kv;
+                    }
+                }
+
                 break;
             case InterfaceType it:
                 foreach (var b in BaseInterfacesOf(it))
@@ -148,7 +164,40 @@ public class Type(TypeKind kind)
         }
     }
 
-    private static IEnumerable<InterfaceType> BaseInterfacesOf(InterfaceType iface)
+    /// <summary>
+    /// Enumerates every interface visible on <paramref name="classType"/>: the ones it
+    /// implements itself, the ones its base classes implement, and every interface those extend,
+    /// transitively. Each interface is yielded once, nearest declaration first. Shared by member
+    /// lookup, extension resolution and the language server.
+    /// </summary>
+    public static IEnumerable<InterfaceType> ImplementedInterfaces(ClassType classType)
+    {
+        var seen = new HashSet<InterfaceType>();
+        for (var cur = classType; cur != null; cur = cur.BaseClass)
+        {
+            foreach (var iface in cur.Interfaces)
+            {
+                if (seen.Add(iface))
+                {
+                    yield return iface;
+                }
+
+                foreach (var baseInterface in BaseInterfacesOf(iface))
+                {
+                    if (seen.Add(baseInterface))
+                    {
+                        yield return baseInterface;
+                    }
+                }
+            }
+        }
+    }
+
+    /// <summary>
+    /// Enumerates the interfaces <paramref name="iface"/> extends, transitively. Each one is
+    /// yielded once; <paramref name="iface"/> itself is not part of the result.
+    /// </summary>
+    public static IEnumerable<InterfaceType> BaseInterfacesOf(InterfaceType iface)
     {
         var seen = new HashSet<InterfaceType>();
         var stack = new Stack<InterfaceType>(iface.BaseInterfaces);

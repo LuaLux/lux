@@ -32,6 +32,28 @@ local function callGreet(g: Greetable): string
     return g:greet()
 end
 
+declare interface Damageable
+    function getHealth(): number
+end
+
+declare interface Paintable extends Damageable
+    function setColor(color: string): nil
+end
+
+declare class Entity
+    function getId(): number
+end
+
+declare class Character extends Entity implements Paintable
+    function respawn(): nil
+end
+
+local function inspectExternal(c: Character): number
+    c:setColor("red")
+    c:respawn()
+    return c:getId() + c:getHealth()
+end
+
 export function run(): nil
     section("interfaces")
 
@@ -43,4 +65,6 @@ export function run(): nil
 
     -- Pass class instance through an interface-typed parameter
     expectEq("polymorphic call", callGreet(r), "beep, I am R2")
+
+    expectEq("declared class inherits interface signatures", type(inspectExternal), "function")
 end

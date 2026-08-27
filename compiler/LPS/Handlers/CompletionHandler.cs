@@ -489,6 +489,32 @@ public sealed class CompletionHandler(NebraWorkspace workspace) : CompletionHand
                 }
             }
 
+            foreach (var iface in Nebra.IR.Type.ImplementedInterfaces(classType))
+            {
+                foreach (var (name, field) in iface.Fields)
+                {
+                    if (!seen.Add(name)) continue;
+                    classItems.Add(new CompletionItem
+                    {
+                        Label = name,
+                        Kind = CompletionItemKind.Field,
+                        Detail = workspace.FormatType(result.Types, field.Type.ID)
+                    });
+                }
+
+                foreach (var (name, method) in iface.Methods)
+                {
+                    if (name.StartsWith("__")) continue;
+                    if (!seen.Add(name)) continue;
+                    classItems.Add(new CompletionItem
+                    {
+                        Label = name,
+                        Kind = CompletionItemKind.Method,
+                        Detail = workspace.FormatType(result.Types, method.ID)
+                    });
+                }
+            }
+
             foreach (var (name, method) in Nebra.IR.Type.EnumerateExtensions(classType, result.Types.PrimFunction))
             {
                 if (name.StartsWith("__")) continue;
