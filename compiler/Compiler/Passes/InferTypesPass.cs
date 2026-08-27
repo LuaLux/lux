@@ -2188,6 +2188,8 @@ public sealed class InferTypesPass() : Pass(PassName, PassScope.PerBuild)
             }
         }
 
+        CheckExhaustivePatterns(pc, scrutType, me.Span, me.Arms.Select(a => a.Pattern).ToList());
+
         return unified ?? tt.PrimAny.ID;
     }
 
@@ -4199,13 +4201,25 @@ public sealed class InferTypesPass() : Pass(PassName, PassScope.PerBuild)
 
     private void CheckExhaustiveMatch(PassContext pc, MatchStmt matchStmt)
     {
+        CheckExhaustivePatterns(pc, matchStmt.Scrutinee.Type, matchStmt.Span,
+            matchStmt.Arms.Select(a => a.Pattern).ToList());
+    }
+
+    /// <summary>
+    /// The exhaustiveness check shared by the <c>match</c> statement and the <c>match</c>
+    /// expression. Both carry the same patterns, and an expression that matches nothing yields
+    /// nil, so a partial one is exactly as wrong there as in the statement form.
+    /// </summary>
+    private void CheckExhaustivePatterns(PassContext pc, TypID scrutinee, TextSpan span,
+        List<MatchPattern> patterns)
+    {
         var level = pc.Config.Rules.ExhaustiveMatch;
         if (level == ExhaustiveMatchLevel.None) return;
 
-        var hasWildcard = matchStmt.Arms.Any(a => a.Pattern.Kind == MatchPatternKind.Wildcard);
+        var hasWildcard = patterns.Any(p => p.Kind == MatchPatternKind.Wildcard);
         if (level == ExhaustiveMatchLevel.Relaxed && hasWildcard) return;
 
-        var scrutType = matchStmt.Scrutinee.Type;
+        var scrutType = scrutinee;
         if (scrutType == TypID.Invalid) return;
         if (!pc.Pkg!.Types.GetByID(scrutType, out var t)) return;
 
@@ -4214,15 +4228,15 @@ public sealed class InferTypesPass() : Pass(PassName, PassScope.PerBuild)
             if (level == ExhaustiveMatchLevel.Explicit && hasWildcard)
             {
                 var allMembers = string.Join(", ", enumType.Members.Select(m => enumType.Name + "." + m.Name));
-                pc.Diag.Report(matchStmt.Span, DiagnosticCode.ErrNonExhaustiveMatch,
+                pc.Diag.Report(span, DiagnosticCode.ErrNonExhaustiveMatch,
                     enumType.Name, allMembers + " (wildcard not allowed in explicit mode)");
                 return;
             }
 
             var covered = new HashSet<string>();
-            foreach (var arm in matchStmt.Arms)
+            foreach (var pattern in patterns)
             {
-                if (arm.Pattern.Kind == MatchPatternKind.Value && arm.Pattern.ValueExpr is DotAccessExpr dot)
+                if (pattern.Kind == MatchPatternKind.Value && pattern.ValueExpr is DotAccessExpr dot)
                     covered.Add(dot.FieldName.Name);
             }
 
@@ -4230,7 +4244,7 @@ public sealed class InferTypesPass() : Pass(PassName, PassScope.PerBuild)
             if (missing.Count == 0 || hasWildcard) return;
 
             var missingNames = string.Join(", ", missing.Select(m => enumType.Name + "." + m.Name));
-            pc.Diag.Report(matchStmt.Span, DiagnosticCode.ErrNonExhaustiveMatch,
+            pc.Diag.Report(span, DiagnosticCode.ErrNonExhaustiveMatch,
                 enumType.Name, missingNames);
             return;
         }
@@ -4240,17 +4254,17 @@ public sealed class InferTypesPass() : Pass(PassName, PassScope.PerBuild)
             if (level == ExhaustiveMatchLevel.Explicit && hasWildcard) return;
 
             var covered = new HashSet<TypID>();
-            foreach (var arm in matchStmt.Arms)
+            foreach (var pattern in patterns)
             {
-                if (arm.Pattern.Kind == MatchPatternKind.TypeBinding && arm.Pattern.TypeRef != null)
-                    covered.Add(arm.Pattern.TypeRef.ResolvedType);
+                if (pattern.Kind == MatchPatternKind.TypeBinding && pattern.TypeRef != null)
+                    covered.Add(pattern.TypeRef.ResolvedType);
             }
 
             var missing = union.Types.Where(m => !covered.Contains(m.ID)).ToList();
             if (missing.Count == 0 || hasWildcard) return;
 
             var missingNames = string.Join(", ", missing.Select(m => m.Key.Value));
-            pc.Diag.Report(matchStmt.Span, DiagnosticCode.ErrNonExhaustiveMatch,
+            pc.Diag.Report(span, DiagnosticCode.ErrNonExhaustiveMatch,
                 union.Key.Value, missingNames);
         }
     }

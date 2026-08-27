@@ -19,6 +19,18 @@ class Bird extends Animal
     end
 end
 
+enum Suit
+    Hearts
+    Spades
+end
+
+local function suitName(s: Suit): string
+    return match s
+        case Suit.Hearts then "hearts"
+        case Suit.Spades then "spades"
+    end
+end
+
 local function classify(n: number): string
     return match n
         case 0 then "zero"
@@ -38,6 +50,9 @@ end
 
 export function run(): nil
     section("pattern matching")
+
+    -- A match expression covering every enum variant needs no wildcard
+    expectEq("exhaustive match expression", suitName(Suit.Spades), "spades")
 
     -- Match expression with value/wildcard/guard
     expectEq("match value 0", classify(0), "zero")

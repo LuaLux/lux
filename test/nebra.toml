@@ -7,3 +7,6 @@ generate_declarations = false
 
 [code]
 index_base = 1
+
+[rules]
+exhaustive_match = "relaxed"
