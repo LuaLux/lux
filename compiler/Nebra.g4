@@ -366,12 +366,12 @@ extendMethod
     ;
 
 exportStat
-    : EXPORT functionDecl                                        # ExportFunction
-    | EXPORT localFunctionDecl                                   # ExportLocalFunction
-    | EXPORT localDecl                                           # ExportLocal
-    | EXPORT enumDecl                                            # ExportEnum
-    | EXPORT classDecl                                           # ExportClass
-    | EXPORT interfaceDecl                                       # ExportInterface
+    : annotationList EXPORT functionDecl                         # ExportFunction
+    | annotationList EXPORT localFunctionDecl                    # ExportLocalFunction
+    | annotationList EXPORT localDecl                            # ExportLocal
+    | annotationList EXPORT enumDecl                             # ExportEnum
+    | annotationList EXPORT classDecl                            # ExportClass
+    | annotationList EXPORT interfaceDecl                        # ExportInterface
     ;
 
 // -----------------------------------------------------------------------------

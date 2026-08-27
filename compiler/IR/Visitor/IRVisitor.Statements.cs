@@ -279,39 +279,69 @@ internal partial class IRVisitor
     public override Node VisitImportSideEffect(NebraParser.ImportSideEffectContext context)
         => new ImportStmt(NewNodeID, SpanFromCtx(context), ImportKind.SideEffect, NameRefFromString(context.str()));
     
+    /// <summary>
+    /// Merges the annotations written before an <c>export</c> onto the declaration it exports.
+    /// Every other declaration form carries its annotations itself, so both orders are accepted
+    /// and end up in the same place; the ones written after <c>export</c> keep their position at
+    /// the front of the list.
+    /// </summary>
+    private void ApplyLeadingAnnotations(Decl decl, NebraParser.AnnotationListContext? annotationList)
+    {
+        if (annotationList == null) return;
+
+        var leading = VisitAnnotationListContent(annotationList);
+        if (leading.Count == 0) return;
+
+        switch (decl)
+        {
+            case FunctionDecl fd: fd.Annotations.AddRange(leading); break;
+            case LocalFunctionDecl lfd: lfd.Annotations.AddRange(leading); break;
+            case LocalDecl ld: ld.Annotations.AddRange(leading); break;
+            case EnumDecl ed: ed.Annotations.AddRange(leading); break;
+            case ClassDecl cd: cd.Annotations.AddRange(leading); break;
+            case InterfaceDecl id: id.Annotations.AddRange(leading); break;
+        }
+    }
+
     public override Node VisitExportFunction(NebraParser.ExportFunctionContext context)
     {
         var decl = (Decl)Visit(context.functionDecl());
+        ApplyLeadingAnnotations(decl, context.annotationList());
         return new ExportStmt(NewNodeID, SpanFromCtx(context), decl);
     }
 
     public override Node VisitExportLocalFunction(NebraParser.ExportLocalFunctionContext context)
     {
         var decl = (Decl)Visit(context.localFunctionDecl());
+        ApplyLeadingAnnotations(decl, context.annotationList());
         return new ExportStmt(NewNodeID, SpanFromCtx(context), decl);
     }
 
     public override Node VisitExportLocal(NebraParser.ExportLocalContext context)
     {
         var decl = (Decl)Visit(context.localDecl());
+        ApplyLeadingAnnotations(decl, context.annotationList());
         return new ExportStmt(NewNodeID, SpanFromCtx(context), decl);
     }
 
     public override Node VisitExportEnum(NebraParser.ExportEnumContext context)
     {
         var decl = (Decl)Visit(context.enumDecl());
+        ApplyLeadingAnnotations(decl, context.annotationList());
         return new ExportStmt(NewNodeID, SpanFromCtx(context), decl);
     }
 
     public override Node VisitExportClass(NebraParser.ExportClassContext context)
     {
         var decl = (Decl)Visit(context.classDecl());
+        ApplyLeadingAnnotations(decl, context.annotationList());
         return new ExportStmt(NewNodeID, SpanFromCtx(context), decl);
     }
 
     public override Node VisitExportInterface(NebraParser.ExportInterfaceContext context)
     {
         var decl = (Decl)Visit(context.interfaceDecl());
+        ApplyLeadingAnnotations(decl, context.annotationList());
         return new ExportStmt(NewNodeID, SpanFromCtx(context), decl);
     }
 }
