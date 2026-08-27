@@ -1,4 +1,4 @@
-using Nebra.IR;
+﻿using Nebra.IR;
 using MediatR;
 using Newtonsoft.Json.Linq;
 using OmniSharp.Extensions.LanguageServer.Protocol;
@@ -183,8 +183,17 @@ public sealed class CodeActionHandler(NebraWorkspace workspace) : CodeActionHand
         var paramText = string.Join(", ",
             method.ParamTypes.Zip(method.ParamNames, (t, n) => $"{n}: {workspace.FormatType(result.Types, t.ID)}"));
         var ret = workspace.FormatType(result.Types, method.ReturnType.ID);
-        var retSuffix = string.Equals(ret, "nil", StringComparison.Ordinal) ? "" : $": {ret}";
-        return $"function {name}({paramText}){retSuffix}\n    -- TODO: implement\nend";
+        var returnsNil = string.Equals(ret, "nil", StringComparison.Ordinal);
+        var retSuffix = returnsNil ? "" : $": {ret}";
+
+        // A stub that declares a return type has to produce one, or applying the fix trades the
+        // missing-member error for a missing-return error. `error` is declared `never`, so it
+        // satisfies any return type while still making an unimplemented member obvious at runtime.
+        var body = returnsNil
+            ? "    -- TODO: implement"
+            : $"    error(\"{name} is not implemented\")";
+
+        return $"function {name}({paramText}){retSuffix}\n{body}\nend";
     }
 
     private static OmniSharp.Extensions.LanguageServer.Protocol.Models.Range ComputeInsertBeforeEndRange(string source, ClassDecl cd)
