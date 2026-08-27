@@ -417,6 +417,11 @@ public sealed partial class CodegenPass() : Pass(PassName, PassScope.PerBuild, t
         gen.NewLine();
         gen.Indent();
 
+        if (cd.Constructor != null)
+        {
+            EmitDefaultParamPreamble(ctx, pkg, gen, cd.Constructor.Parameters);
+        }
+
         if (TryCollectCollapsibleInits(cd, hasBase, hasAccessors, out var inits))
         {
             EmitCollapsedConstructor(ctx, pkg, gen, className, inits);

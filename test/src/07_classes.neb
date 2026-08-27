@@ -96,6 +96,20 @@ class Vec
     end
 end
 
+class Greeting
+    text: string
+    punctuation: string
+
+    constructor(text: string = "hello", punctuation: string = "!")
+        self.text = text
+        self.punctuation = punctuation
+    end
+
+    function render(): string
+        return self.text .. self.punctuation
+    end
+end
+
 class Guarded extends Counter
     function peek(): number
         return self.count
@@ -149,6 +163,11 @@ export function run(): nil
     b:push(2)
     b:push(3)
     expectEq("getter returns size", b.size, 3)
+
+    -- Constructor parameter defaults
+    expectEq("constructor defaults, none supplied", (new Greeting()):render(), "hello!")
+    expectEq("constructor defaults, first supplied", (new Greeting("hi")):render(), "hi!")
+    expectEq("constructor defaults, all supplied", (new Greeting("hi", "?")):render(), "hi?")
 
     -- Protected member reachable from a subclass
     local guarded = new Guarded()

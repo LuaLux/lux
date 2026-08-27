@@ -717,17 +717,26 @@ public sealed class InferTypesPass() : Pass(PassName, PassScope.PerBuild)
         if (cd.Constructor != null)
         {
             var ctorParams = new List<Tuple<string, Type>>();
-            foreach (var p in cd.Constructor.Parameters)
+            var ctorDefaults = new List<int>();
+            for (var i = 0; i < cd.Constructor.Parameters.Count; i++)
             {
+                var p = cd.Constructor.Parameters[i];
                 var t = ResolveParamType(pc, p);
                 if (p.Name.Sym != SymID.Invalid) pc.Pkg!.Syms.SetType(p.Name.Sym, t.ID);
                 ctorParams.Add(new Tuple<string, Type>(p.Name.Name, t));
+                if (p.DefaultValue != null)
+                {
+                    SynthesizeExpr(pc, p.DefaultValue);
+                    ctorDefaults.Add(i);
+                }
             }
-            classType.ConstructorType = (FunctionType)GetType(pc, pc.Types.FuncOf(ctorParams, classType));
+            classType.ConstructorType = (FunctionType)GetType(pc, pc.Types.FuncOf(ctorParams, classType,
+                defaultParams: ctorDefaults.Count > 0 ? ctorDefaults : null));
             var ctorSide = Nebra.Compiler.Annotations.BuiltinAnnotations.ExtractSide(cd.Constructor.Annotations,
                 (ann, badName) => ReportBadSide(pc, ann, badName));
             classType.ConstructorSide = ctorSide;
 
+            CheckSuperCall(pc, cd, classType);
             ResolveStmts(pc, cd.Constructor.Body, cd.Constructor.ReturnStmt);
         }
 
@@ -857,6 +866,39 @@ public sealed class InferTypesPass() : Pass(PassName, PassScope.PerBuild)
 
         CheckInterfaceImplementation(pc, cd, classType);
         CheckAbstractImplementation(pc, cd, classType);
+    }
+
+    /// <summary>
+    /// Checks the <c>super()</c> rules for a class that declares its own constructor. Codegen
+    /// falls back to an argument-less <c>Base.new()</c> when no super call is present, which is
+    /// only correct while the inherited constructor needs no arguments; anything else leaves the
+    /// base half of the object unset. A super call that is not the first statement is equally
+    /// broken, since everything before it runs before <c>self</c> exists.
+    /// </summary>
+    private void CheckSuperCall(PassContext pc, ClassDecl cd, ClassType classType)
+    {
+        var ctor = cd.Constructor!;
+        var superIndex = ctor.Body.FindIndex(s => s is ExprStmt { Expression: SuperCallExpr });
+
+        if (classType.BaseClass == null)
+        {
+            if (superIndex >= 0)
+                pc.Diag.Report(ctor.Body[superIndex].Span, Diagnostics.DiagnosticCode.ErrSuperOutsideConstructor);
+            return;
+        }
+
+        if (superIndex > 0)
+        {
+            pc.Diag.Report(ctor.Body[superIndex].Span, Diagnostics.DiagnosticCode.ErrSuperNotFirst);
+            return;
+        }
+
+        if (superIndex == 0) return;
+
+        var inherited = ResolveConstructorType(classType.BaseClass);
+        if (inherited == null || inherited.MinParamCount == 0) return;
+
+        pc.Diag.Report(ctor.Span, Diagnostics.DiagnosticCode.ErrMissingSuperCall, cd.Name.Name);
     }
 
     private static bool ParentHasMethod(ClassType cls, string name)
