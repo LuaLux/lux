@@ -22,6 +22,13 @@ public sealed class InferTypesPass() : Pass(PassName, PassScope.PerBuild)
     private readonly HashSet<NodeID> _resolvedClassDecls = [];
     private readonly HashSet<NodeID> _resolvedInterfaceDecls = [];
     private readonly HashSet<NodeID> _resolvedExtendDecls = [];
+
+    /// <summary>
+    /// The class whose body is currently being resolved, or <c>null</c> outside any class. Access
+    /// to a protected member is legal from here and from anything deriving from the class that
+    /// declared it, so the check needs to know where it stands.
+    /// </summary>
+    private ClassType? _currentClass;
     private readonly HashSet<NodeID> _registeredExtendDecls = [];
 
     /// <summary>
@@ -650,7 +657,25 @@ public sealed class InferTypesPass() : Pass(PassName, PassScope.PerBuild)
         if (!pc.Pkg!.Syms.GetByID(cd.Name.Sym, out var classSym)) return;
         if (!pc.Types.GetByID(classSym.Type, out var rawType) || rawType is not ClassType classType) return;
 
-        foreach (var (id, sym) in pc.Pkg.Syms.ByID)
+        var enclosingClass = _currentClass;
+        _currentClass = classType;
+        try
+        {
+            ResolveClassBody(pc, cd, classType);
+        }
+        finally
+        {
+            _currentClass = enclosingClass;
+        }
+    }
+
+    /// <summary>
+    /// The body of <see cref="ResolveClassDecl"/>, split out so the enclosing-class state it runs
+    /// under is restored on every exit path.
+    /// </summary>
+    private void ResolveClassBody(PassContext pc, ClassDecl cd, ClassType classType)
+    {
+        foreach (var (id, sym) in pc.Pkg!.Syms.ByID)
             if (sym.Name == "self" && sym.DeclaringNode == cd.ID && sym.Type == TypID.Invalid)
                 pc.Pkg.Syms.SetType(id, classType.ID);
 
@@ -2357,8 +2382,8 @@ public sealed class InferTypesPass() : Pass(PassName, PassScope.PerBuild)
                     var cur = ct.BaseClass;
                     while (cur != null && !found)
                     {
-                        if (cur.InstanceFields.TryGetValue(fname, out var pf)) { resultType = pf.Type.ID; found = true; }
-                        else if (cur.Methods.TryGetValue(fname, out var pm)) { resultType = pm.ID; found = true; }
+                        if (cur.InstanceFields.TryGetValue(fname, out var pf)) { CheckProtectedAccess(pc, dot.FieldName.Span, ct, fname); resultType = pf.Type.ID; found = true; }
+                        else if (cur.Methods.TryGetValue(fname, out var pm)) { CheckProtectedAccess(pc, dot.FieldName.Span, ct, fname); resultType = pm.ID; found = true; }
                         else if (cur.Getters.TryGetValue(fname, out var pg)) { resultType = pg.ReturnType.ID; found = true; }
                         else if (cur.StaticMethods.TryGetValue(fname, out var psm)) { resultType = psm.ID; found = true; }
                         cur = cur.BaseClass;
@@ -2379,16 +2404,42 @@ public sealed class InferTypesPass() : Pass(PassName, PassScope.PerBuild)
         return dot.IsOptional ? MakeNullable(pc, resultType) : resultType;
     }
 
+    /// <summary>
+    /// Reports an access to a protected member from outside the hierarchy that declares it. The
+    /// member may be declared anywhere up the chain, and the access is legal from the declaring
+    /// class and from any class below it.
+    /// </summary>
     private void CheckProtectedAccess(PassContext pc, TextSpan span, ClassType classType, string memberName)
     {
-        if (!classType.ProtectedMembers.Contains(memberName)) return;
+        var owner = FindProtectedOwner(classType, memberName);
+        if (owner == null) return;
+        if (_currentClass != null && DerivesFrom(_currentClass, owner)) return;
 
-        var cur = classType.BaseClass;
-        while (cur != null)
+        pc.Diag.Report(span, DiagnosticCode.ErrProtectedAccess, memberName, owner.Name);
+    }
+
+    /// <summary>
+    /// Finds the class in <paramref name="classType"/>'s chain that declares
+    /// <paramref name="memberName"/> protected, or <c>null</c> when none does.
+    /// </summary>
+    private static ClassType? FindProtectedOwner(ClassType classType, string memberName)
+    {
+        for (var cur = classType; cur != null; cur = cur.BaseClass)
         {
-            if (cur.ProtectedMembers.Contains(memberName)) break;
-            cur = cur.BaseClass;
+            if (cur.ProtectedMembers.Contains(memberName)) return cur;
         }
+
+        return null;
+    }
+
+    private static bool DerivesFrom(ClassType candidate, ClassType target)
+    {
+        for (var cur = candidate; cur != null; cur = cur.BaseClass)
+        {
+            if (cur.ID == target.ID) return true;
+        }
+
+        return false;
     }
 
     private TypID InferIndexAccess(PassContext pc, IndexAccessExpr idx)
@@ -2679,6 +2730,11 @@ public sealed class InferTypesPass() : Pass(PassName, PassScope.PerBuild)
                     TypeName(pc, objTyp), mc.MethodName.Name);
             }
             return pc.Types.PrimAny.ID;
+        }
+
+        if (objType is ClassType receiverClass)
+        {
+            CheckProtectedAccess(pc, mc.MethodName.Span, receiverClass, mc.MethodName.Name);
         }
 
         var prefixSelf = objType is ClassType || StartsWithSelfParam(methodFn);

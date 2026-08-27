@@ -96,6 +96,12 @@ class Vec
     end
 end
 
+class Guarded extends Counter
+    function peek(): number
+        return self.count
+    end
+end
+
 class Heir extends Animal
 end
 
@@ -143,6 +149,11 @@ export function run(): nil
     b:push(2)
     b:push(3)
     expectEq("getter returns size", b.size, 3)
+
+    -- Protected member reachable from a subclass
+    local guarded = new Guarded()
+    guarded:bump()
+    expectEq("protected field read from a subclass", guarded:peek(), 1)
 
     -- Constructor inherited by a class that declares none
     local h = new Heir("passed through")
