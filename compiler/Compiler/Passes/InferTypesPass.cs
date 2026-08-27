@@ -825,6 +825,18 @@ public sealed class InferTypesPass() : Pass(PassName, PassScope.PerBuild)
         return false;
     }
 
+    /// <summary>
+    /// Reports every interface member <paramref name="classType"/> is required to declare but
+    /// does not, and materialises the interface defaults it inherits (including those declared
+    /// on transitively-extended interfaces). A method carrying a default is never a missing
+    /// requirement, since the class inherits its body.
+    /// <para>
+    /// A <c>declare class</c> is exempt from the requirement: it describes an externally
+    /// implemented type, so the members it takes from an interface are provided by that
+    /// implementation and need not be restated. Member lookup reaches them through
+    /// <see cref="ResolveInterfaceMethodOnClass"/> instead.
+    /// </para>
+    /// </summary>
     private void CheckInterfaceImplementation(PassContext pc, ClassDecl cd, ClassType classType)
     {
         foreach (var ifaceType in classType.Interfaces)
@@ -832,24 +844,36 @@ public sealed class InferTypesPass() : Pass(PassName, PassScope.PerBuild)
             foreach (var (name, ft) in ifaceType.Methods)
             {
                 if (classType.Methods.ContainsKey(name)) continue;
-                // A method with a default implementation need not be implemented — the class
-                // inherits it. Otherwise it is a missing requirement.
+
                 if (ifaceType.DefaultMethods.Contains(name))
+                {
                     InjectDefault(pc, classType, ifaceType, name, ft);
-                else
-                    pc.Diag.Report(cd.Span, Diagnostics.DiagnosticCode.ErrMissingInterfaceMember, cd.Name.Name, name, ifaceType.Name);
-            }
-            foreach (var (name, _) in ifaceType.Fields)
-            {
-                if (!classType.InstanceFields.ContainsKey(name))
-                    pc.Diag.Report(cd.Span, Diagnostics.DiagnosticCode.ErrMissingInterfaceMember, cd.Name.Name, name, ifaceType.Name);
+                    continue;
+                }
+
+                if (cd.IsDeclare) continue;
+
+                pc.Diag.Report(cd.Span, Diagnostics.DiagnosticCode.ErrMissingInterfaceMember, cd.Name.Name, name, ifaceType.Name);
             }
 
-            // Defaults declared on transitively-extended interfaces are inherited too.
-            foreach (var baseIface in AllBaseInterfaces(ifaceType))
+            foreach (var (name, _) in ifaceType.Fields)
+            {
+                if (cd.IsDeclare) continue;
+                if (classType.InstanceFields.ContainsKey(name)) continue;
+
+                pc.Diag.Report(cd.Span, Diagnostics.DiagnosticCode.ErrMissingInterfaceMember, cd.Name.Name, name, ifaceType.Name);
+            }
+
+            foreach (var baseIface in Type.BaseInterfacesOf(ifaceType))
+            {
                 foreach (var name in baseIface.DefaultMethods)
-                    if (!classType.Methods.ContainsKey(name) && baseIface.Methods.TryGetValue(name, out var bft))
-                        InjectDefault(pc, classType, baseIface, name, bft);
+                {
+                    if (classType.Methods.ContainsKey(name)) continue;
+                    if (!baseIface.Methods.TryGetValue(name, out var bft)) continue;
+
+                    InjectDefault(pc, classType, baseIface, name, bft);
+                }
+            }
         }
     }
 
@@ -863,12 +887,7 @@ public sealed class InferTypesPass() : Pass(PassName, PassScope.PerBuild)
         if (classType.Methods.ContainsKey(name)) return;
         if (classType.BaseClass != null && ParentHasMethod(classType.BaseClass, name)) return;
 
-        var paramTuples = new List<Tuple<string, Type>> { new("self", classType) };
-        for (var i = 0; i < ft.ParamTypes.Count; i++)
-            paramTuples.Add(new Tuple<string, Type>(ft.ParamNames[i], ft.ParamTypes[i]));
-        var withSelf = (FunctionType)GetType(pc, pc.Types.FuncOf(paramTuples, ft.ReturnType, ft.IsVararg,
-            ft.VarargType, ft.DefaultParams.Count > 0 ? ft.DefaultParams : null, ft.IsAsync));
-        classType.Methods[name] = withSelf;
+        classType.Methods[name] = WithSelfParam(pc, classType, ft);
 
         if (iface.DefaultMethodNodes.TryGetValue(name, out var node))
             classType.DefaultsToEmit[name] = node;
@@ -876,26 +895,11 @@ public sealed class InferTypesPass() : Pass(PassName, PassScope.PerBuild)
 
     private static bool InterfaceHasMethod(ClassType classType, string name)
     {
-        foreach (var iface in classType.Interfaces)
+        foreach (var iface in Type.ImplementedInterfaces(classType))
         {
             if (iface.Methods.ContainsKey(name)) return true;
-            foreach (var b in AllBaseInterfaces(iface))
-                if (b.Methods.ContainsKey(name)) return true;
         }
         return false;
-    }
-
-    private static IEnumerable<InterfaceType> AllBaseInterfaces(InterfaceType iface)
-    {
-        var seen = new HashSet<InterfaceType>();
-        var stack = new Stack<InterfaceType>(iface.BaseInterfaces);
-        while (stack.Count > 0)
-        {
-            var cur = stack.Pop();
-            if (!seen.Add(cur)) continue;
-            yield return cur;
-            foreach (var b in cur.BaseInterfaces) stack.Push(b);
-        }
     }
 
     private void CheckAbstractImplementation(PassContext pc, ClassDecl cd, ClassType classType)
@@ -2094,7 +2098,7 @@ public sealed class InferTypesPass() : Pass(PassName, PassScope.PerBuild)
                         else if (cur.StaticMethods.TryGetValue(fname, out var psm)) { resultType = psm.ID; found = true; }
                         cur = cur.BaseClass;
                     }
-                    if (!found) resultType = pc.Types.PrimAny.ID;
+                    if (!found) resultType = ResolveInterfaceMemberOnClass(pc, ct, fname);
                 }
                 classDotDone:
                 break;
@@ -2205,7 +2209,7 @@ public sealed class InferTypesPass() : Pass(PassName, PassScope.PerBuild)
             var isClassRef = dotForOverload.Object is NameExpr cre
                 && pc.Pkg!.Syms.GetByID(cre.Name.Sym, out var cSym)
                 && cSym.Kind == SymbolKind.Class;
-            var (ovFns, ovSides) = CollectMethodOverloads(receiverTyp, fname, staticOnly: isClassRef);
+            var (ovFns, ovSides) = CollectMethodOverloads(pc, receiverTyp, fname, staticOnly: isClassRef);
             if (ovFns.Count > 1)
             {
                 // Dot-access calls don't prepend `self`; ScoreOverload should
@@ -2374,7 +2378,7 @@ public sealed class InferTypesPass() : Pass(PassName, PassScope.PerBuild)
         // explicit args at the call site — `self` is implicit, so for class
         // instance methods we have to account for it when scoring (the stored
         // FunctionType includes `self` as its first param).
-        var (mcFns, mcSides) = CollectMethodOverloads(objType, mc.MethodName.Name, staticOnly: false);
+        var (mcFns, mcSides) = CollectMethodOverloads(pc, objType, mc.MethodName.Name, staticOnly: false);
         if (mcFns.Count > 1)
         {
             var ovPrefixSelf = objType is ClassType || (mcFns.Count > 0 && StartsWithSelfParam(mcFns[0]));
@@ -2390,7 +2394,7 @@ public sealed class InferTypesPass() : Pass(PassName, PassScope.PerBuild)
             }
         }
 
-        var methodFn = ResolveMethodOnType(objType, mc.MethodName.Name);
+        var methodFn = ResolveMethodOnType(pc, objType, mc.MethodName.Name);
         if (methodFn == null)
         {
             // Fall back to an extension method: it lowers to a plain call `fn(receiver, args)`.
@@ -2432,7 +2436,7 @@ public sealed class InferTypesPass() : Pass(PassName, PassScope.PerBuild)
         return ft.ParamNames.Count > 0 && ft.ParamNames[0] == "self";
     }
 
-    private static FunctionType? ResolveMethodOnType(Type baseType, string methodName)
+    private FunctionType? ResolveMethodOnType(PassContext pc, Type baseType, string methodName)
     {
         if (baseType is ClassType ct)
         {
@@ -2442,7 +2446,7 @@ public sealed class InferTypesPass() : Pass(PassName, PassScope.PerBuild)
                 if (cur.Methods.TryGetValue(methodName, out var m)) return m;
                 cur = cur.BaseClass;
             }
-            return null;
+            return ResolveInterfaceMethodOnClass(pc, ct, methodName);
         }
         if (baseType is InterfaceType ift)
         {
@@ -2466,6 +2470,71 @@ public sealed class InferTypesPass() : Pass(PassName, PassScope.PerBuild)
     }
 
     /// <summary>
+    /// Looks <paramref name="methodName"/> up on the interfaces <paramref name="classType"/>
+    /// implements, transitively and including the ones inherited from its base classes. A
+    /// <c>declare class</c> is not required to restate the members it takes from an interface
+    /// (the implementation is external), so for such a class the signature lives on the
+    /// interface alone. The result carries the synthetic <c>self</c> parameter class instance
+    /// methods are stored with, which makes it indistinguishable from a declared one.
+    /// </summary>
+    private FunctionType? ResolveInterfaceMethodOnClass(PassContext pc, ClassType classType, string methodName)
+    {
+        foreach (var iface in Type.ImplementedInterfaces(classType))
+        {
+            if (iface.Methods.TryGetValue(methodName, out var ft))
+            {
+                return WithSelfParam(pc, classType, ft);
+            }
+        }
+
+        return null;
+    }
+
+    /// <summary>
+    /// Resolves a member read (<c>receiver.member</c>) on a class receiver against the
+    /// interfaces it implements, covering the members a <c>declare class</c> inherits without
+    /// restating them. Returns <c>any</c> when no implemented interface declares the name.
+    /// </summary>
+    private TypID ResolveInterfaceMemberOnClass(PassContext pc, ClassType classType, string memberName)
+    {
+        foreach (var iface in Type.ImplementedInterfaces(classType))
+        {
+            if (iface.Fields.TryGetValue(memberName, out var field))
+            {
+                return field.Type.ID;
+            }
+
+            if (iface.Methods.TryGetValue(memberName, out var method))
+            {
+                return WithSelfParam(pc, classType, method).ID;
+            }
+        }
+
+        return pc.Types.PrimAny.ID;
+    }
+
+    /// <summary>
+    /// Rebuilds <paramref name="ft"/> with a leading <c>self</c> parameter typed as
+    /// <paramref name="classType"/>, the shape class instance methods are stored in. Default
+    /// parameter indices shift along with the inserted parameter.
+    /// </summary>
+    private FunctionType WithSelfParam(PassContext pc, ClassType classType, FunctionType ft)
+    {
+        var parameters = new List<Tuple<string, Type>> { new("self", classType) };
+        for (var i = 0; i < ft.ParamTypes.Count; i++)
+        {
+            parameters.Add(new Tuple<string, Type>(ft.ParamNames[i], ft.ParamTypes[i]));
+        }
+
+        var defaults = ft.DefaultParams.Count > 0
+            ? ft.DefaultParams.Select(index => index + 1).ToList()
+            : null;
+
+        return (FunctionType)GetType(pc, pc.Types.FuncOf(parameters, ft.ReturnType, ft.IsVararg,
+            ft.VarargType, defaults, ft.IsAsync, ft.Predicate));
+    }
+
+    /// <summary>
     /// Gathers every declared overload of <paramref name="methodName"/> on
     /// <paramref name="baseType"/>, with each overload's <see cref="Side"/>
     /// annotation in parallel. Walks the class/interface inheritance chain so
@@ -2473,8 +2542,8 @@ public sealed class InferTypesPass() : Pass(PassName, PassScope.PerBuild)
     /// caller should fall back to the single-method <see cref="ResolveMethodOnType"/>
     /// path (which already handles the no-overload majority case).
     /// </summary>
-    private static (List<FunctionType> Fns, List<Side> Sides) CollectMethodOverloads(
-        Type baseType, string methodName, bool staticOnly)
+    private (List<FunctionType> Fns, List<Side> Sides) CollectMethodOverloads(
+        PassContext pc, Type baseType, string methodName, bool staticOnly)
     {
         var fns = new List<FunctionType>();
         var sides = new List<Side>();
@@ -2491,6 +2560,11 @@ public sealed class InferTypesPass() : Pass(PassName, PassScope.PerBuild)
                     if (ovSides.TryGetValue(methodName, out var s)) sides.AddRange(s);
                     else sides.AddRange(Enumerable.Repeat(Side.All, list.Count));
                 }
+            }
+
+            if (fns.Count == 0 && !staticOnly)
+            {
+                CollectInterfaceOverloads(pc, ct, methodName, fns, sides);
             }
         }
         else if (baseType is InterfaceType ift && !staticOnly)
@@ -2510,6 +2584,36 @@ public sealed class InferTypesPass() : Pass(PassName, PassScope.PerBuild)
         }
 
         return (fns, sides);
+    }
+
+    /// <summary>
+    /// Adds the overloads an implemented interface declares for <paramref name="methodName"/>,
+    /// self-prefixed so they score the way class methods do. Only consulted when the class chain
+    /// declares none, so a class that restates an interface member keeps its own candidate set.
+    /// </summary>
+    private void CollectInterfaceOverloads(PassContext pc, ClassType classType, string methodName,
+        List<FunctionType> fns, List<Side> sides)
+    {
+        foreach (var iface in Type.ImplementedInterfaces(classType))
+        {
+            if (!iface.MethodOverloads.TryGetValue(methodName, out var list)) continue;
+
+            foreach (var fn in list)
+            {
+                fns.Add(WithSelfParam(pc, classType, fn));
+            }
+
+            if (iface.MethodOverloadSides.TryGetValue(methodName, out var ifaceSides))
+            {
+                sides.AddRange(ifaceSides);
+            }
+            else
+            {
+                sides.AddRange(Enumerable.Repeat(Side.All, list.Count));
+            }
+
+            return;
+        }
     }
 
     /// <summary>
@@ -2848,28 +2952,13 @@ public sealed class InferTypesPass() : Pass(PassName, PassScope.PerBuild)
             }
         }
 
-        foreach (var iface in classType.Interfaces)
+        foreach (var iface in Type.ImplementedInterfaces(classType))
         {
-            if (TryGetInterfaceMethodReturn(iface, name, out retType))
+            if (iface.Methods.TryGetValue(name, out var ifaceFt))
+            {
+                retType = ifaceFt.ReturnType;
                 return true;
-        }
-
-        retType = null!;
-        return false;
-    }
-
-    private static bool TryGetInterfaceMethodReturn(InterfaceType iface, string name, out Type retType)
-    {
-        if (iface.Methods.TryGetValue(name, out var ft))
-        {
-            retType = ft.ReturnType;
-            return true;
-        }
-
-        foreach (var b in iface.BaseInterfaces)
-        {
-            if (TryGetInterfaceMethodReturn(b, name, out retType))
-                return true;
+            }
         }
 
         retType = null!;
@@ -3455,7 +3544,7 @@ public sealed class InferTypesPass() : Pass(PassName, PassScope.PerBuild)
         if (c is MethodCallExpr predMc
             && pc.Pkg!.Types.GetByID(SynthesizeExpr(pc, predMc.Object), out var recvT))
         {
-            var mfn = ResolveMethodOnType(recvT, predMc.MethodName.Name);
+            var mfn = ResolveMethodOnType(pc, recvT, predMc.MethodName.Name);
             if (mfn?.Predicate is { } mpred)
             {
                 var idx = mfn.ParamNames.IndexOf(mpred.ParamName);

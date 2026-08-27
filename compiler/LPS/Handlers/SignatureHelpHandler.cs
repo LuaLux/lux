@@ -199,6 +199,13 @@ public sealed class SignatureHelpHandler(NebraWorkspace workspace) : SignatureHe
                 if (isStatic && cur.StaticMethods.TryGetValue(name, out var sm)) return sm;
                 if (!isStatic && cur.Methods.TryGetValue(name, out var im)) return im;
             }
+
+            if (isStatic) return null;
+
+            foreach (var iface in Nebra.IR.Type.ImplementedInterfaces(ct))
+            {
+                if (iface.Methods.TryGetValue(name, out var im)) return im;
+            }
             return null;
         }
         if (rt is InterfaceType ift)

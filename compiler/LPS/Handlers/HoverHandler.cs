@@ -267,6 +267,16 @@ public sealed class HoverHandler(NebraWorkspace workspace) : HoverHandlerBase
                     return ($"(field) {ct.Name}.{name}: {workspace.FormatType(result.Types, f.Type)}",
                         null, workspace.FormatTypeReferencesLine(result, f.Type.ID));
             }
+
+            foreach (var iface in IR.Type.ImplementedInterfaces(ct))
+            {
+                if (iface.Methods.TryGetValue(name, out var im))
+                    return (FormatMember(result, ct.Name, name, im, isMethodLike: true),
+                        null, workspace.FormatTypeReferencesLine(result, im.ID));
+                if (iface.Fields.TryGetValue(name, out var f))
+                    return ($"(field) {ct.Name}.{name}: {workspace.FormatType(result.Types, f.Type)}",
+                        null, workspace.FormatTypeReferencesLine(result, f.Type.ID));
+            }
         }
         else if (recvType is InterfaceType ift)
         {
