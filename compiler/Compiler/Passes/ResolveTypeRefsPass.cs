@@ -685,6 +685,11 @@ public class ResolveTypeRefsPass() : Pass(PassName, PassScope.PerBuild)
     
     private Type ResolveTypeRef(TypeTable tt, TypeRef tr)
     {
+        // Error recovery leaves holes where a type was expected (`local t: = {`), so a reference
+        // can be missing entirely. The syntax error is already reported; `any` keeps the rest of
+        // the pass running over what did parse.
+        if (tr == null) return tt.PrimAny;
+
         if (tr.ResolvedType != TypID.Invalid)
         {
             tt.GetByID(tr.ResolvedType, out var resolvedType);

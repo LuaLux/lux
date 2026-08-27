@@ -488,6 +488,17 @@ public sealed class InferTypesPass() : Pass(PassName, PassScope.PerBuild)
                 break;
             case IfStmt ifStmt:
             {
+                // Error recovery can hand us an `if` with no condition (`if then end`). The syntax
+                // error is already reported, so the branch bodies are still walked for whatever
+                // else they contain, but nothing is inferred from the missing condition.
+                if (ifStmt.Condition == null)
+                {
+                    ResolveStmts(pc, ifStmt.Body);
+                    foreach (var elseIf in ifStmt.ElseIfs) ResolveStmts(pc, elseIf.Body);
+                    if (ifStmt.ElseBody != null) ResolveStmts(pc, ifStmt.ElseBody);
+                    break;
+                }
+
                 var tCond = SynthesizeExpr(pc, ifStmt.Condition);
                 EnsureBoolLike(pc, ifStmt.Condition.Span, tCond);
 
@@ -1355,7 +1366,7 @@ public sealed class InferTypesPass() : Pass(PassName, PassScope.PerBuild)
 
         foreach (var field in id.Fields)
         {
-            var fType = field.TypeAnnotation.ResolvedType != TypID.Invalid
+            var fType = field.TypeAnnotation != null && field.TypeAnnotation.ResolvedType != TypID.Invalid
                 ? GetType(pc, field.TypeAnnotation.ResolvedType) : pc.Types.PrimAny;
             ifaceType.Fields[field.Name.Name] = new StructType.Field(field.Name, fType);
             StampMemberSide(pc, field.Annotations, ifaceType.FieldSides, field.Name.Name);
