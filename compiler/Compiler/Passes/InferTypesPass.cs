@@ -429,8 +429,13 @@ public sealed class InferTypesPass() : Pass(PassName, PassScope.PerBuild)
             case ExprStmt exprStmt:
                 SynthesizeExpr(pc, exprStmt.Expression);
                 break;
+            case BreakStmt breakStmt:
+                if (breakStmt.Depth < 1)
+                {
+                    pc.Diag.Report(breakStmt.Span, DiagnosticCode.ErrInvalidControlFlowDepth, "break");
+                }
+                break;
             case LabelStmt:
-            case BreakStmt:
             case GotoStmt:
                 break;
             case DoBlockStmt doBlockStmt:

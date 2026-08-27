@@ -31,8 +31,85 @@ public sealed class ResolveImportsPass() : Pass(PassName, PassScope.PerBuild)
         if (freshlyInjected.Count > 0)
             BindAndResolveNewFiles(context, freshlyInjected);
 
+        ReportImportCycles(context);
+
         return true;
     }
+
+    /// <summary>
+    /// Reports a cycle in the source-level import graph. Each module is emitted as a Lua chunk
+    /// that <c>require</c>s the ones it imports, and Lua only caches a module once it has finished
+    /// loading, so a cycle recurses until the C stack overflows. The failure surfaces at load time
+    /// with no indication of which imports formed the loop, which is why it is rejected here.
+    /// Declaration modules are left out: they carry no code to load.
+    /// </summary>
+    private void ReportImportCycles(PassContext context)
+    {
+        var edges = new Dictionary<string, List<ImportEdge>>(StringComparer.OrdinalIgnoreCase);
+
+        foreach (var pkg in context.Pkgs)
+        {
+            foreach (var file in pkg.Files)
+            {
+                if (file.Filename == null) continue;
+
+                foreach (var stmt in file.Hir.Body)
+                {
+                    if (stmt is not ImportStmt import) continue;
+
+                    var key = $"import_resolved:{file.Filename}:{import.Module.Name}";
+                    if (!context.Cache.TryGetValue(key, out var obj) || obj is not ResolvedModule resolved) continue;
+                    if (resolved.Kind != ModuleKind.NebraSource || resolved.FilePath == null) continue;
+
+                    var from = Path.GetFullPath(file.Filename);
+                    if (!edges.TryGetValue(from, out var list))
+                    {
+                        list = [];
+                        edges[from] = list;
+                    }
+
+                    list.Add(new ImportEdge(Path.GetFullPath(resolved.FilePath), import.Module.Name, import.Module.Span));
+                }
+            }
+        }
+
+        var state = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+        foreach (var start in edges.Keys.OrderBy(k => k, StringComparer.Ordinal))
+        {
+            WalkForCycle(context, edges, state, start);
+        }
+    }
+
+    /// <summary>
+    /// Depth-first walk marking nodes 1 while they are on the stack and 2 once finished, so an
+    /// edge back to a node still on the stack is the import that closes a cycle.
+    /// </summary>
+    private static void WalkForCycle(PassContext context, Dictionary<string, List<ImportEdge>> edges,
+        Dictionary<string, int> state, string node)
+    {
+        if (state.TryGetValue(node, out var mark) && mark != 0) return;
+
+        state[node] = 1;
+        if (edges.TryGetValue(node, out var outgoing))
+        {
+            foreach (var edge in outgoing)
+            {
+                if (state.TryGetValue(edge.To, out var targetMark) && targetMark == 1)
+                {
+                    var key = $"import_cycle_reported:{edge.To}:{node}";
+                    if (context.Cache.TryAdd(key, true))
+                        context.Diag.Report(edge.Span, Diagnostics.DiagnosticCode.ErrTopLevelCycle, edge.ModuleName);
+                    continue;
+                }
+
+                WalkForCycle(context, edges, state, edge.To);
+            }
+        }
+
+        state[node] = 2;
+    }
+
+    private sealed record ImportEdge(string To, string ModuleName, Diagnostics.TextSpan Span);
 
     private void ProcessFileImports(PassContext ctx, PackageContext pkg, PreparsedFile file,
         List<PreparsedFile> newFiles)

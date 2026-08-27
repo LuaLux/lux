@@ -1,4 +1,4 @@
-namespace Nebra.IR;
+﻿namespace Nebra.IR;
 
 internal partial class IRVisitor
 {
@@ -47,7 +47,7 @@ internal partial class IRVisitor
     public override Node VisitBreakStat(NebraParser.BreakStatContext context)
     {
         var depth = 1;
-        if (context.INT() != null && int.TryParse(context.INT().GetText(), out var d) && d >= 1) depth = d;
+        if (context.INT() != null && int.TryParse(context.INT().GetText(), out var d)) depth = d;
         return new BreakStmt(NewNodeID, SpanFromCtx(context), depth);
     }
 
