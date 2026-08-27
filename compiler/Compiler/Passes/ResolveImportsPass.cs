@@ -205,13 +205,37 @@ public sealed class ResolveImportsPass() : Pass(PassName, PassScope.PerBuild)
                     {
                         var importName = spec.Alias ?? spec.Name;
                         CopySymbolType(sourcePkg, exportSym, pkg, importName.Sym);
+                        continue;
                     }
+
+                    ReportMissingImportMember(ctx, pkg, sourcePkg, import, sourceFile, spec);
                 }
                 break;
             case ImportKind.Default:
             case ImportKind.Namespace:
                 break;
         }
+    }
+
+    /// <summary>
+    /// Reports a named import the source module does not provide, separating a member that exists
+    /// but was never exported from one that does not exist at all. Without this the binding is
+    /// left untyped and the name resolves to nil at runtime. Guarded through the pass cache
+    /// because import types are propagated again after every package is typed, and the same
+    /// specifier would otherwise be reported once per round.
+    /// </summary>
+    private static void ReportMissingImportMember(PassContext ctx, PackageContext pkg, PackageContext sourcePkg,
+        ImportStmt import, PreparsedFile sourceFile, ImportSpecifier spec)
+    {
+        var key = $"import_member_missing:{pkg.Path}:{import.Module.Name}:{spec.Name.Name}";
+        if (!ctx.Cache.TryAdd(key, true)) return;
+
+        var lookupScope = sourceFile.BindingScopeOverride ?? sourcePkg.Root;
+        var code = sourcePkg.Scopes.Lookup(lookupScope, spec.Name.Name, out _)
+            ? Diagnostics.DiagnosticCode.ErrSymbolNotExported
+            : Diagnostics.DiagnosticCode.ErrSymbolNotFound;
+
+        ctx.Diag.Report(spec.Name.Span, code, spec.Name.Name, import.Module.Name);
     }
 
     private static void ResolveFromTopLevelDeclarations(PassContext ctx, PackageContext pkg, PackageContext sourcePkg,
