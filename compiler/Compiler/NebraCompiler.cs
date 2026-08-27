@@ -83,7 +83,6 @@ public class NebraCompiler
         var file = new PreparsedFile(filename, source);
         if (!Preparse(file))
         {
-            Diagnostics.Report(TextSpan.Empty, DiagnosticCode.ErrPreparsingFailed);
             return;
         }
         
@@ -144,18 +143,31 @@ public class NebraCompiler
             // syntax error has already been recorded by the error listeners, so we
             // surface a clean diagnostic instead of letting the build crash with an
             // unhandled NullReferenceException.
-            Diagnostics.Report(TextSpan.Empty, DiagnosticCode.ErrPreparsingFailed);
+            ReportPreparsingFailure();
             return false;
         }
 
         if (ir is not IRScript script)
         {
-            Diagnostics.Report(TextSpan.Empty, DiagnosticCode.ErrPreparsingFailed);
+            ReportPreparsingFailure();
             return false;
         }
         
         file.Hir = script;
         Nebra.Doc.DocBinder.Bind(script, file.Content);
         return true;
+    }
+
+    /// <summary>
+    /// Reports that lowering produced no usable HIR. Stays quiet when an error has already been
+    /// recorded: the error listeners will have pointed at the syntax that caused it, and this
+    /// carries no span, so adding it on top only buries the actionable message under what reads
+    /// like a compiler crash.
+    /// </summary>
+    private void ReportPreparsingFailure()
+    {
+        if (Diagnostics.HasErrors) return;
+
+        Diagnostics.Report(TextSpan.Empty, DiagnosticCode.ErrPreparsingFailed);
     }
 }

@@ -1,7 +1,21 @@
-namespace Nebra.IR;
+﻿namespace Nebra.IR;
 
 internal partial class IRVisitor
 {
+    /// <summary>
+    /// Maps an accessor keyword to its kind. The grammar accepts any identifier in that position,
+    /// so anything other than <c>get</c> or <c>set</c> is reported rather than silently treated as
+    /// a setter, which is what a mistyped <c>get</c> used to become.
+    /// </summary>
+    private AccessorKind ResolveAccessorKind(string kindName, Antlr4.Runtime.Tree.ITerminalNode token)
+    {
+        if (kindName == "get") return AccessorKind.Getter;
+        if (kindName == "set") return AccessorKind.Setter;
+
+        diag.Report(SpanFromTerm(token), Diagnostics.DiagnosticCode.ErrInvalidAccessor, kindName);
+        return AccessorKind.Getter;
+    }
+
     public override Node VisitFunctionDecl(NebraParser.FunctionDeclContext context)
     {
         var (namePath, methodName) = VisitFuncNameContent(context.funcName());
@@ -261,7 +275,7 @@ internal partial class IRVisitor
                 {
                     var kindName = accessor.NAME(0).GetText();
                     var propName = NameRefFromTerm(accessor.NAME(1));
-                    var kind = kindName == "get" ? AccessorKind.Getter : AccessorKind.Setter;
+                    var kind = ResolveAccessorKind(kindName, accessor.NAME(0));
                     var (parameters, returnType) = VisitFuncSignatureContent(accessor.funcSignature());
                     var anode = new ClassAccessorNode(kind, propName, parameters, returnType, [], null, false, SpanFromCtx(accessor));
                     anode.Annotations = VisitAnnotationListContent(accessor.annotationList());
@@ -437,7 +451,7 @@ internal partial class IRVisitor
                 {
                     var kindName = accessor.NAME(0).GetText();
                     var propName = NameRefFromTerm(accessor.NAME(1));
-                    var kind = kindName == "get" ? AccessorKind.Getter : AccessorKind.Setter;
+                    var kind = ResolveAccessorKind(kindName, accessor.NAME(0));
                     var (parameters, returnType) = VisitFuncSignatureContent(accessor.funcSignature());
                     var anode = new ClassAccessorNode(kind, propName, parameters, returnType, [], null, false, SpanFromCtx(accessor));
                     anode.Annotations = VisitAnnotationListContent(accessor.annotationList());
@@ -609,7 +623,7 @@ internal partial class IRVisitor
                     var isOverride = accessor.OVERRIDE() != null;
                     var kindName = accessor.NAME(0).GetText();
                     var propName = NameRefFromTerm(accessor.NAME(1));
-                    var kind = kindName == "get" ? AccessorKind.Getter : AccessorKind.Setter;
+                    var kind = ResolveAccessorKind(kindName, accessor.NAME(0));
                     var (parameters, returnType, body, ret) = VisitFuncBodyContent(accessor.funcBody());
                     var accNode = new ClassAccessorNode(kind, propName, parameters, returnType, body, ret, isOverride, SpanFromCtx(accessor));
                     accNode.Annotations = VisitAnnotationListContent(accessor.annotationList());
