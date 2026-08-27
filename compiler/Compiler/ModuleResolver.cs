@@ -1,4 +1,4 @@
-using Antlr4.Runtime;
+﻿using Antlr4.Runtime;
 using Nebra.Configuration;
 using Nebra.Diagnostics;
 using Nebra.IR;
@@ -47,6 +47,9 @@ public sealed class ModuleResolver(Config config)
         var found = FindDeclareModule(moduleName, pkgs);
         if (found != null) return found;
 
+        var inPackage = ResolveInsideInstalledPackage(moduleName, pkgs, diag, nodeAlloc);
+        if (inPackage != null) return inPackage;
+
         var searchDirs = BuildSearchPaths(importerPath);
 
         foreach (var dir in searchDirs)
@@ -86,6 +89,58 @@ public sealed class ModuleResolver(Config config)
 
         return null;
     }
+
+    /// <summary>
+    /// Resolves a module that lives inside an installed package's own source directory. The
+    /// generic search treats <c>nebra_modules/</c> as a flat root, which only finds a package
+    /// whose code sits at its root; a package that keeps its code where its own manifest says
+    /// (<c>source = "src"</c>, say) is invisible to it. The bare package name resolves to that
+    /// directory's <c>init</c>, and <c>&lt;pkg&gt;/&lt;rest&gt;</c> to the file below it.
+    /// </summary>
+    private ResolvedModule? ResolveInsideInstalledPackage(string moduleName, List<PackageContext> pkgs,
+        DiagnosticsBag diag, IDAlloc<NodeID> nodeAlloc)
+    {
+        var slash = moduleName.IndexOf('/');
+        var head = slash < 0 ? moduleName : moduleName[..slash];
+        var rest = slash < 0 ? "init" : moduleName[(slash + 1)..];
+
+        foreach (var pkg in InstalledPackagesOnDisk())
+        {
+            var dirName = Path.GetFileName(pkg.RootPath);
+            if (!string.Equals(dirName, head, StringComparison.Ordinal)
+                && !string.Equals(pkg.Name, head, StringComparison.Ordinal)) continue;
+
+            var source = pkg.Manifest?.Source;
+            if (string.IsNullOrWhiteSpace(source) || source == ".") continue;
+
+            var sourceRoot = Path.GetFullPath(Path.Combine(pkg.RootPath, source));
+            if (!Directory.Exists(sourceRoot)) continue;
+
+            foreach (var (candidate, kind) in new[]
+                     {
+                         (Path.Combine(sourceRoot, rest + ".d.neb"), ModuleKind.Declaration),
+                         (Path.Combine(sourceRoot, rest + ".neb"), ModuleKind.NebraSource),
+                         (Path.Combine(sourceRoot, rest, "init.d.neb"), ModuleKind.Declaration),
+                         (Path.Combine(sourceRoot, rest, "init.neb"), ModuleKind.NebraSource),
+                     })
+            {
+                if (!File.Exists(candidate)) continue;
+
+                var file = LoadAndInject(candidate, pkgs, diag, nodeAlloc);
+                if (file != null)
+                    return new ResolvedModule { Kind = kind, File = file, FilePath = candidate };
+            }
+        }
+
+        return null;
+    }
+
+    private IReadOnlyList<InstalledPackage> InstalledPackagesOnDisk()
+    {
+        return _installed ??= InstalledPackages.Discover(Environment.CurrentDirectory);
+    }
+
+    private List<InstalledPackage>? _installed;
 
     private List<string> BuildSearchPaths(string? importerPath)
     {

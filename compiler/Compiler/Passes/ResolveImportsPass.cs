@@ -1,4 +1,4 @@
-using Nebra.IR;
+﻿using Nebra.IR;
 
 namespace Nebra.Compiler.Passes;
 
@@ -44,7 +44,12 @@ public sealed class ResolveImportsPass() : Pass(PassName, PassScope.PerBuild)
             var resolved = _resolver!.Resolve(
                 import.Module.Name, file.Filename, ctx.Pkgs, ctx.Diag, ctx.NodeAlloc);
 
-            if (resolved == null) continue;
+            if (resolved == null)
+            {
+                if (!import.IsTypeOnly)
+                    ctx.Diag.Report(import.Module.Span, Diagnostics.DiagnosticCode.ErrModuleNotFound, import.Module.Name);
+                continue;
+            }
 
             ctx.Cache[$"import_resolved:{file.Filename}:{import.Module.Name}"] = resolved;
 
