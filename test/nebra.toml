@@ -10,3 +10,4 @@ index_base = 1
 
 [rules]
 exhaustive_match = "relaxed"
+immutable_default = true

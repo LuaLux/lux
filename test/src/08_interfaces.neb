@@ -62,6 +62,14 @@ class Widget implements Configurable
     end
 end
 
+extend number
+    function doubled(): number
+        local mut acc: number = 0
+        acc = self * 2
+        return acc
+    end
+end
+
 class Terse implements Configurable
     function label(prefix: string): string
         return prefix .. ":terse"
@@ -128,6 +136,8 @@ export function run(): nil
 
     local c: Configurable = w
     expectEq("default param through interface receiver", c:label(), "cfg:widget")
+
+    expectEq("extend block body runs under the immutability rule", (21):doubled(), 42)
 
     local t = new Terse()
     expectEq("implementation adopts the interface default", t:label(), "cfg:terse")

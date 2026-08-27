@@ -9,7 +9,7 @@ local function greet(name: string, greeting: string = "Hello"): string
 end
 
 local function variadic(...: number): number
-    local total: number = 0
+    local mut total: number = 0
     for _, v in ipairs({ ... }) do
         total = total + v
     end

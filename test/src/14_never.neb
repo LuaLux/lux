@@ -26,7 +26,7 @@ end
 
 --- The narrowing ends at the next assignment, so the widened type is usable again.
 local function reassignAfterGuard(key: string): string
-    local found: string? = lookup(key)
+    local mut found: string? = lookup(key)
     if found == nil then
         abort("missing " .. key)
     end

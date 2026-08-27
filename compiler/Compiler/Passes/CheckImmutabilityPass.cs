@@ -1,4 +1,4 @@
-using Nebra.Diagnostics;
+﻿using Nebra.Diagnostics;
 using Nebra.IR;
 
 namespace Nebra.Compiler.Passes;
@@ -116,7 +116,23 @@ public sealed class CheckImmutabilityPass() : Pass(PassName, PassScope.PerFile)
                     if (field.DefaultValue != null) CheckExpr(ctx, pkg, field.DefaultValue);
                 }
                 break;
-            case InterfaceDecl:
+            case InterfaceDecl id:
+                foreach (var method in id.Methods)
+                {
+                    if (method.Body == null) continue;
+                    CheckStmtList(ctx, pkg, method.Body);
+                    if (method.ReturnStmt != null) CheckStmt(ctx, pkg, method.ReturnStmt);
+                }
+
+                break;
+            case ExtendDecl ed:
+                foreach (var method in ed.Methods)
+                {
+                    CheckStmtList(ctx, pkg, method.Body);
+                    if (method.ReturnStmt != null) CheckStmt(ctx, pkg, method.ReturnStmt);
+                }
+
+                break;
             case BreakStmt:
             case ContinueStmt:
             case LabelStmt:
