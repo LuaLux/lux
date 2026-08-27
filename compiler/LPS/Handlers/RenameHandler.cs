@@ -1,4 +1,4 @@
-using Nebra.IR;
+﻿using Nebra.IR;
 using OmniSharp.Extensions.LanguageServer.Protocol;
 using OmniSharp.Extensions.LanguageServer.Protocol.Client.Capabilities;
 using OmniSharp.Extensions.LanguageServer.Protocol.Document;
@@ -27,6 +27,18 @@ public sealed class RenameHandler(NebraWorkspace workspace) : RenameHandlerBase
             return Task.FromResult<WorkspaceEdit?>(null);
 
         var targetSym = nameRef.Sym;
+
+        // Only names declared in this file can be renamed safely. The edits are collected from this
+        // file's HIR alone, so renaming a symbol that another file declares would rewrite the
+        // import and the uses here while leaving the declaration untouched, which does not compile.
+        if (result.ImportedDeclarations.ContainsKey(targetSym))
+            return Task.FromResult<WorkspaceEdit?>(null);
+
+        if (result.FileMap.TryGetValue(sym.DeclaringNode, out var declaringFile)
+            && !string.IsNullOrEmpty(declaringFile)
+            && !SamePath(declaringFile, request.TextDocument.Uri.GetFileSystemPath()))
+            return Task.FromResult<WorkspaceEdit?>(null);
+
         var allRefs = NodeFinder.CollectAllNameRefs(result.Hir);
         var edits = allRefs
             .Where(nr => nr.Sym == targetSym)
@@ -58,4 +70,10 @@ public sealed class RenameHandler(NebraWorkspace workspace) : RenameHandlerBase
             PrepareProvider = true
         };
     }
+    private static bool SamePath(string a, string b)
+    {
+        if (string.IsNullOrEmpty(a) || string.IsNullOrEmpty(b)) return false;
+        return string.Equals(Path.GetFullPath(a), Path.GetFullPath(b), StringComparison.OrdinalIgnoreCase);
+    }
+
 }
