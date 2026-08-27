@@ -1,4 +1,4 @@
-using Nebra.Configuration;
+﻿using Nebra.Configuration;
 using Nebra.IR;
 
 namespace Nebra.Compiler.Annotations;
@@ -14,7 +14,15 @@ public static class BuiltinAnnotations
     public const string Side = "side";
     public const string OverrideCtor = "overrideCtor";
 
-    private static readonly HashSet<string> Names = new(StringComparer.Ordinal) { Side, OverrideCtor };
+    /// <summary>
+    /// Marks a declaration for inclusion under <c>[reflection] mode = "annotated"</c>. Read
+    /// directly by the reflection emitter, so it is a builtin like the others: it needs no
+    /// definition file, and it has to survive the annotation pass to still be there when the
+    /// emitter looks.
+    /// </summary>
+    public const string Reflectable = "reflectable";
+
+    private static readonly HashSet<string> Names = new(StringComparer.Ordinal) { Side, OverrideCtor, Reflectable };
 
     public static bool IsBuiltin(string name) => Names.Contains(name);
 

@@ -1,4 +1,4 @@
-using Nebra.Compiler.Annotations;
+﻿using Nebra.Compiler.Annotations;
 using Nebra.Diagnostics;
 using Nebra.IR;
 using Nebra.Runtime;
@@ -23,10 +23,14 @@ public sealed class ApplyAnnotationsPass()
     public override bool Run(PassContext context)
     {
         if (context.File == null) return true;
-        if (!context.Cache.TryGetValue(AnnotationRegistry.CacheKey, out var reg) ||
-            reg is not AnnotationRegistry registry)
-            return true;
-        if (registry.Count == 0) return true;
+
+        // Walk even when the project defines no annotations of its own: an annotation that is
+        // neither builtin nor registered is a typo that would otherwise do nothing at all, and
+        // whether it is reported must not depend on unrelated configuration.
+        var registry = context.Cache.TryGetValue(AnnotationRegistry.CacheKey, out var reg)
+                       && reg is AnnotationRegistry found
+            ? found
+            : new AnnotationRegistry();
 
         RewriteStmtList(context, registry, context.File.Hir.Body);
         return true;

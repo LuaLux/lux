@@ -2,7 +2,7 @@
 --- class in another file must still be checked against it and must inherit its parameter
 --- defaults. The module exports nothing else, which also covers importing a type-only module.
 
-@reflect
+@reflectable
 export interface Sized
     function resize(width: number, height: number = 10): string
 end
