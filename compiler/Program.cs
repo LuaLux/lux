@@ -1863,12 +1863,24 @@ internal static class Program
             "prune" => RunPmPrune(args.Skip(1).ToArray()),
             "update" => await RunPmUpdate(args.Skip(1).ToArray()),
             "refresh-registry" => await RunPmRefreshRegistry(),
-            _ => RunPmHelp(),
+            _ => RunPmHelp(sub),
         };
     }
 
-    private static int RunPmHelp()
+    /// <summary>
+    /// Prints the <c>pm</c> usage. Bare <c>nebra pm</c> asks for it and succeeds; a subcommand that
+    /// does not exist is an error and has to be reported as one, or a typo in a script passes for a
+    /// successful run.
+    /// </summary>
+    private static int RunPmHelp(string subcommand)
     {
+        if (!string.IsNullOrEmpty(subcommand))
+        {
+            Console.Error.WriteLine($"Unknown pm subcommand: {subcommand}");
+            Console.Error.WriteLine("Run 'nebra pm' for available subcommands.");
+            return 1;
+        }
+
         Console.WriteLine("Usage:");
         Console.WriteLine("  nebra pm prune                  Wipe ALL cached bare clones, snapshots and tmp staging.");
         Console.WriteLine("  nebra pm prune <git-spec>       Wipe the bare clone + every cached snapshot for one repo");
