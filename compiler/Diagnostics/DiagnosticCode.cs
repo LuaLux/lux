@@ -313,6 +313,42 @@ public enum DiagnosticCode
 
     [Level(DiagnosticLevel.Error)]
     [Category(DiagnosticCategory.Type)]
+    [Format("Method '{0}' on class '{1}' takes {2} parameter(s), but interface '{3}' declares {4}")]
+    [Help("give the method the parameters '{3}' declares, or make the extra ones optional with '?' or a default value")]
+    ErrInterfaceMethodArity = 0x4013,
+
+    [Level(DiagnosticLevel.Error)]
+    [Category(DiagnosticCategory.Type)]
+    [Format("Parameter '{0}' of method '{1}' on class '{2}' is '{3}', but interface '{4}' declares '{5}'")]
+    [Help("a call routed through '{4}' passes a '{5}', so the parameter has to accept one")]
+    ErrInterfaceMethodParamType = 0x4014,
+
+    [Level(DiagnosticLevel.Error)]
+    [Category(DiagnosticCategory.Type)]
+    [Format("Method '{0}' on class '{1}' returns '{2}', but interface '{3}' declares '{4}'")]
+    [Help("a call routed through '{3}' expects a '{4}', so the return type has to fit into one")]
+    ErrInterfaceMethodReturnType = 0x4015,
+
+    [Level(DiagnosticLevel.Error)]
+    [Category(DiagnosticCategory.Type)]
+    [Format("Method '{0}' on class '{1}' takes no variadic tail, but interface '{2}' declares one")]
+    [Help("add a '...' parameter so arguments passed through '{2}' are not dropped")]
+    ErrInterfaceMethodVararg = 0x4016,
+
+    [Level(DiagnosticLevel.Error)]
+    [Category(DiagnosticCategory.Type)]
+    [Format("Field '{0}' on class '{1}' is '{2}', but interface '{3}' declares '{4}'")]
+    [Help("give the field the type '{3}' declares, since both reads and writes go through it")]
+    ErrInterfaceFieldType = 0x4017,
+
+    [Level(DiagnosticLevel.Error)]
+    [Category(DiagnosticCategory.Semantic)]
+    [Format("Parameter '{0}' of method '{1}' on class '{2}' must declare its own default value")]
+    [Help("the default interface '{3}' declares is not a literal, so it cannot be inherited into this class; write the default on this parameter")]
+    ErrInterfaceDefaultNotInheritable = 0x4018,
+
+    [Level(DiagnosticLevel.Error)]
+    [Category(DiagnosticCategory.Type)]
     [Format("Primitive type '{0}' cannot take generic type arguments")]
     ErrGenericOnPrimitive = 0x4020,
 

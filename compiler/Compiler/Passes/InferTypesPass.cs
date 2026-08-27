@@ -61,7 +61,10 @@ public sealed class InferTypesPass() : Pass(PassName, PassScope.PerBuild)
     /// expression-level checks in phase 2 see complete member tables. Without it an installed
     /// types-only package whose <c>.d.neb</c> is processed after a consumer's source file would
     /// leave <c>Entity.Methods</c> empty when <c>Entity.Subscribe(...)</c> is checked, and the call
-    /// would fall through to <c>any</c>.
+    /// would fall through to <c>any</c>. It runs in two sweeps: interfaces first across every
+    /// file, then the rest. A class is checked against the interfaces it implements as it is
+    /// resolved, so an interface declared in another file (or further down the same one) would
+    /// otherwise still be empty at that point, and every check against it would silently pass.
     /// </para>
     /// <para>
     /// Phase 2 is the full per-file walk, ordered so importers run after their import targets.
@@ -83,6 +86,16 @@ public sealed class InferTypesPass() : Pass(PassName, PassScope.PerBuild)
         foreach (var pkg in context.Pkgs)
             foreach (var file in pkg.Files)
                 ResolveImportsPass.PropagateImportTypes(context, pkg, file);
+
+        foreach (var pkg in context.Pkgs)
+        {
+            foreach (var file in pkg.Files)
+            {
+                var fileCtx = MakeFileContext(context, pkg, file);
+                _narrowed.Clear();
+                ResolveInterfaceUniverseDecls(fileCtx, file.Hir.Body);
+            }
+        }
 
         foreach (var pkg in context.Pkgs)
         {
@@ -248,6 +261,34 @@ public sealed class InferTypesPass() : Pass(PassName, PassScope.PerBuild)
             defaultIndices.Count > 0 ? defaultIndices : null, isAsync,
             predicate: BuildPredicate(pc, returnTypeRef, parameters));
         pc.Pkg!.Syms.SetType(funcSym, funcTyp);
+    }
+
+    /// <summary>
+    /// Resolves only the interface declarations in a statement list. Runs over every file before
+    /// <see cref="ResolveTypeUniverseDecls"/>, so a class is always checked against a complete
+    /// interface member table regardless of declaration order. Re-entry is guarded by
+    /// <see cref="_resolvedInterfaceDecls"/>, so the main sweep skips whatever this one covered.
+    /// </summary>
+    private void ResolveInterfaceUniverseDecls(PassContext pc, List<Stmt> stmts)
+    {
+        foreach (var stmt in stmts)
+        {
+            switch (stmt)
+            {
+                case InterfaceDecl id:
+                    ResolveInterfaceDecl(pc, id);
+                    break;
+                case ExportStmt { Declaration: InterfaceDecl eid }:
+                    ResolveInterfaceDecl(pc, eid);
+                    break;
+                case DeclareModuleDecl dmd:
+                    foreach (var member in dmd.Members)
+                    {
+                        if (member is InterfaceDecl mid) ResolveInterfaceDecl(pc, mid);
+                    }
+                    break;
+            }
+        }
     }
 
     /// <summary>
@@ -673,6 +714,7 @@ public sealed class InferTypesPass() : Pass(PassName, PassScope.PerBuild)
                 pc.Diag.Report(method.Span, Diagnostics.DiagnosticCode.ErrAbstractInNonAbstractClass, method.Name.Name);
 
             if (method.IsAsync) _asyncDepth++;
+            AdoptInterfaceParamDefaults(pc, cd, classType, method);
             var methodParams = new List<Tuple<string, Type>>();
 
             // Implicit "self" parameter for instance methods
@@ -843,7 +885,11 @@ public sealed class InferTypesPass() : Pass(PassName, PassScope.PerBuild)
         {
             foreach (var (name, ft) in ifaceType.Methods)
             {
-                if (classType.Methods.ContainsKey(name)) continue;
+                if (classType.Methods.TryGetValue(name, out var implemented))
+                {
+                    CheckImplementedMethodSignature(pc, cd, ifaceType, name, ft, implemented);
+                    continue;
+                }
 
                 if (ifaceType.DefaultMethods.Contains(name))
                 {
@@ -856,10 +902,15 @@ public sealed class InferTypesPass() : Pass(PassName, PassScope.PerBuild)
                 pc.Diag.Report(cd.Span, Diagnostics.DiagnosticCode.ErrMissingInterfaceMember, cd.Name.Name, name, ifaceType.Name);
             }
 
-            foreach (var (name, _) in ifaceType.Fields)
+            foreach (var (name, ifaceField) in ifaceType.Fields)
             {
+                if (classType.InstanceFields.TryGetValue(name, out var classField))
+                {
+                    CheckImplementedFieldType(pc, cd, ifaceType, name, ifaceField, classField);
+                    continue;
+                }
+
                 if (cd.IsDeclare) continue;
-                if (classType.InstanceFields.ContainsKey(name)) continue;
 
                 pc.Diag.Report(cd.Span, Diagnostics.DiagnosticCode.ErrMissingInterfaceMember, cd.Name.Name, name, ifaceType.Name);
             }
@@ -891,6 +942,158 @@ public sealed class InferTypesPass() : Pass(PassName, PassScope.PerBuild)
 
         if (iface.DefaultMethodNodes.TryGetValue(name, out var node))
             classType.DefaultsToEmit[name] = node;
+    }
+
+    /// <summary>
+    /// Copies the parameter defaults an implemented interface declares onto a class method that
+    /// omits them, so the promise the interface makes to its callers holds for this
+    /// implementation too. Codegen reads the very same field, so the class method emits the guard
+    /// the interface's own default method would have emitted. A default the class spells out
+    /// itself always wins, and the first interface declaring the method decides.
+    /// </summary>
+    private void AdoptInterfaceParamDefaults(PassContext pc, ClassDecl cd, ClassType classType, ClassMethodNode method)
+    {
+        if (method.IsStatic) return;
+
+        foreach (var iface in Type.ImplementedInterfaces(classType))
+        {
+            if (!iface.MethodNodes.TryGetValue(method.Name.Name, out var ifaceMethod)) continue;
+
+            var shared = Math.Min(method.Parameters.Count, ifaceMethod.Parameters.Count);
+            for (var i = 0; i < shared; i++)
+            {
+                var target = method.Parameters[i];
+                var source = ifaceMethod.Parameters[i];
+                if (target.IsVararg || source.IsVararg) continue;
+                if (target.DefaultValue != null || source.DefaultValue == null) continue;
+
+                if (!IsSelfContainedDefault(source.DefaultValue))
+                {
+                    pc.Diag.Report(target.Name.Span, Diagnostics.DiagnosticCode.ErrInterfaceDefaultNotInheritable,
+                        target.Name.Name, method.Name.Name, cd.Name.Name, iface.Name);
+                    continue;
+                }
+
+                target.DefaultValue = source.DefaultValue;
+            }
+
+            return;
+        }
+    }
+
+    /// <summary>
+    /// Reports whether a default value can be re-emitted in another declaration's context. An
+    /// adopted default is written into the implementing class's output, which may sit in a
+    /// different file or package than the interface, so anything resolved through a name (a
+    /// local, an import, a call) would be looked up in the wrong scope there and silently come
+    /// back nil. Literals and compositions of literals carry no such reference.
+    /// </summary>
+    private static bool IsSelfContainedDefault(Expr expr)
+    {
+        switch (expr)
+        {
+            case NilLiteralExpr:
+            case BoolLiteralExpr:
+            case NumberLiteralExpr:
+            case StringLiteralExpr:
+                return true;
+            case ParenExpr paren:
+                return IsSelfContainedDefault(paren.Inner);
+            case UnaryExpr unary:
+                return IsSelfContainedDefault(unary.Operand);
+            case BinaryExpr binary:
+                return IsSelfContainedDefault(binary.Left) && IsSelfContainedDefault(binary.Right);
+            case TableConstructorExpr table:
+                foreach (var field in table.Fields)
+                {
+                    if (field.Key != null && !IsSelfContainedDefault(field.Key)) return false;
+                    if (!IsSelfContainedDefault(field.Value)) return false;
+                }
+                return true;
+            default:
+                return false;
+        }
+    }
+
+    /// <summary>
+    /// Compares a method the class declares against the interface signature it implements.
+    /// Parameters are contravariant and the return type covariant, which is what keeps a call
+    /// routed through the interface sound: the caller passes the interface's parameter types and
+    /// expects its return type back. The stored class signature carries a synthetic <c>self</c>
+    /// the interface signature does not, so the comparison skips it.
+    /// </summary>
+    private void CheckImplementedMethodSignature(PassContext pc, ClassDecl cd, InterfaceType ifaceType,
+        string name, FunctionType ifaceFt, FunctionType classFt)
+    {
+        var method = cd.Methods.FirstOrDefault(m => !m.IsStatic && !m.IsLocal && m.Name.Name == name);
+        if (method == null) return;
+
+        var span = method.Name.Span;
+        var offset = StartsWithSelfParam(classFt) ? 1 : 0;
+        var classParamCount = classFt.ParamTypes.Count - offset;
+        var ifaceParamCount = ifaceFt.ParamTypes.Count;
+
+        if (classParamCount < ifaceParamCount || HasRequiredParamsBeyond(classFt, offset, ifaceParamCount))
+        {
+            pc.Diag.Report(span, Diagnostics.DiagnosticCode.ErrInterfaceMethodArity,
+                name, cd.Name.Name, classParamCount, ifaceType.Name, ifaceParamCount);
+            return;
+        }
+
+        for (var i = 0; i < ifaceParamCount; i++)
+        {
+            var ifaceParam = ifaceFt.ParamTypes[i];
+            var classParam = classFt.ParamTypes[i + offset];
+            if (IsTypeAssignable(pc, classParam.ID, ifaceParam.ID)) continue;
+
+            pc.Diag.Report(span, Diagnostics.DiagnosticCode.ErrInterfaceMethodParamType,
+                classFt.ParamNames[i + offset], name, cd.Name.Name, TypeName(pc, classParam.ID),
+                ifaceType.Name, TypeName(pc, ifaceParam.ID));
+        }
+
+        if (ifaceFt.IsVararg && !classFt.IsVararg)
+        {
+            pc.Diag.Report(span, Diagnostics.DiagnosticCode.ErrInterfaceMethodVararg,
+                name, cd.Name.Name, ifaceType.Name);
+        }
+
+        if (!IsTypeAssignable(pc, ifaceFt.ReturnType.ID, classFt.ReturnType.ID))
+        {
+            pc.Diag.Report(span, Diagnostics.DiagnosticCode.ErrInterfaceMethodReturnType,
+                name, cd.Name.Name, TypeName(pc, classFt.ReturnType.ID),
+                ifaceType.Name, TypeName(pc, ifaceFt.ReturnType.ID));
+        }
+    }
+
+    /// <summary>
+    /// Reports whether the class signature demands an argument the interface knows nothing about,
+    /// which a call routed through the interface could never supply. Extra parameters are fine as
+    /// long as every one of them is optional.
+    /// </summary>
+    private static bool HasRequiredParamsBeyond(FunctionType classFt, int offset, int ifaceParamCount)
+    {
+        for (var i = offset + ifaceParamCount; i < classFt.ParamTypes.Count; i++)
+        {
+            if (!classFt.DefaultParams.Contains(i)) return true;
+        }
+
+        return false;
+    }
+
+    /// <summary>
+    /// Compares a field the class declares against the interface field it implements. Fields are
+    /// read and written through the interface, so the types have to match in both directions.
+    /// </summary>
+    private void CheckImplementedFieldType(PassContext pc, ClassDecl cd, InterfaceType ifaceType,
+        string name, StructType.Field ifaceField, StructType.Field classField)
+    {
+        if (IsTypeAssignable(pc, ifaceField.Type.ID, classField.Type.ID)
+            && IsTypeAssignable(pc, classField.Type.ID, ifaceField.Type.ID)) return;
+
+        var field = cd.Fields.FirstOrDefault(f => !f.IsLocal && f.Name.Name == name);
+        pc.Diag.Report(field?.Name.Span ?? cd.Span, Diagnostics.DiagnosticCode.ErrInterfaceFieldType,
+            name, cd.Name.Name, TypeName(pc, classField.Type.ID),
+            ifaceType.Name, TypeName(pc, ifaceField.Type.ID));
     }
 
     private static bool InterfaceHasMethod(ClassType classType, string name)
@@ -983,6 +1186,7 @@ public sealed class InferTypesPass() : Pass(PassName, PassScope.PerBuild)
                 (ann, badName) => ReportBadSide(pc, ann, badName));
             AppendOverload(ifaceType.Methods, ifaceType.MethodOverloads,
                 ifaceType.MethodOverloadSides, method.Name.Name, ifaceFt, methodSide);
+            ifaceType.MethodNodes[method.Name.Name] = method;
             StampMemberSide(pc, method.Annotations, ifaceType.MethodSides, method.Name.Name);
 
             // A default method carries a body: record it (so implementing classes inherit it)

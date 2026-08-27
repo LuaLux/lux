@@ -1,4 +1,4 @@
-using Nebra.Diagnostics;
+﻿using Nebra.Diagnostics;
 
 namespace Nebra.IR;
 
@@ -7,7 +7,13 @@ public sealed class Parameter(NodeID id, NameRef name, TypeRef? typeAnnotation, 
     public NameRef Name { get; } = name;
     public TypeRef? TypeAnnotation { get; } = typeAnnotation;
     public bool IsVararg { get; } = isVararg;
-    public Expr? DefaultValue { get; } = defaultValue;
+
+    /// <summary>
+    /// The default value, or <c>null</c> when the parameter is required. Settable because a class
+    /// method adopts the default an implemented interface declares for the same position, so the
+    /// promise the interface makes to callers also holds for the implementation.
+    /// </summary>
+    public Expr? DefaultValue { get; set; } = defaultValue;
     public List<Annotation> Annotations { get; set; } = [];
 }
 

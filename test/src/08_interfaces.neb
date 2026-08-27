@@ -1,4 +1,5 @@
 import { section, expectEq, expect } from "_runner"
+import { Sized, sizedTag } from "08a_interface_defs"
 
 interface Greetable
     function greet(): string
@@ -61,6 +62,18 @@ class Widget implements Configurable
     end
 end
 
+class Terse implements Configurable
+    function label(prefix: string): string
+        return prefix .. ":terse"
+    end
+end
+
+class SizedBox implements Sized
+    function resize(width: number, height: number): string
+        return tostring(width) .. "x" .. tostring(height)
+    end
+end
+
 local function inspectExternal(c: Character): number
     c:setColor("red")
     c:respawn()
@@ -89,4 +102,18 @@ export function run(): nil
 
     local c: Configurable = w
     expectEq("default param through interface receiver", c:label(), "cfg:widget")
+
+    local t = new Terse()
+    expectEq("implementation adopts the interface default", t:label(), "cfg:terse")
+    expectEq("adopted default can still be overridden", t:label("ui"), "ui:terse")
+
+    local tc: Configurable = t
+    expectEq("adopted default through interface receiver", tc:label(), "cfg:terse")
+
+    local b = new SizedBox()
+    expectEq("default adopted from an interface in another file", b:resize(4), "4x10")
+
+    local s: Sized = b
+    expectEq("cross-file default through interface receiver", s:resize(4, 2), "4x2")
+    expectEq("cross-file module value", sizedTag(), "sized")
 end

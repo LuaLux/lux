@@ -648,6 +648,14 @@ public sealed class InterfaceType(
     public Dictionary<string, InterfaceMethodNode> DefaultMethodNodes { get; } = new();
 
     /// <summary>
+    /// The AST node for every method, keyed by name (the last overload wins, mirroring
+    /// <see cref="Methods"/>). Implementing classes read it to adopt the parameter defaults this
+    /// interface promises, which <see cref="DefaultMethodNodes"/> cannot cover because it only
+    /// holds the methods that carry a body.
+    /// </summary>
+    public Dictionary<string, InterfaceMethodNode> MethodNodes { get; } = new();
+
+    /// <summary>
     /// All overloads per method name; the entry in <see cref="Methods"/> mirrors
     /// the last-inserted overload. See <see cref="ClassType.MethodOverloads"/>
     /// for the rationale.
