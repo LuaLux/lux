@@ -401,9 +401,9 @@ public sealed class BindDeclarePass() : Pass(PassName, PassScope.PerFile)
                 if (declareFuncDecl.NamePath.Count == 1 && declareFuncDecl.MethodName == null)
                 {
                     if (declareFuncDecl.IsAsync)
-                        DeclareSymbol(ctx, scope, declareFuncDecl.NamePath[0].Name, SymbolKind.Function, declareFuncDecl.ID, declareFuncDecl.NamePath[0].Span, SymbolFlags.Async);
+                        DeclareSymbol(ctx, scope, declareFuncDecl.NamePath[0].Name, SymbolKind.Function, declareFuncDecl.ID, declareFuncDecl.NamePath[0].Span, SymbolFlags.Async, SymbolFlags.External);
                     else
-                        DeclareSymbol(ctx, scope, declareFuncDecl.NamePath[0].Name, SymbolKind.Function, declareFuncDecl.ID, declareFuncDecl.NamePath[0].Span);
+                        DeclareSymbol(ctx, scope, declareFuncDecl.NamePath[0].Name, SymbolKind.Function, declareFuncDecl.ID, declareFuncDecl.NamePath[0].Span, SymbolFlags.External);
                     StampSide(ctx, scope, declareFuncDecl.NamePath[0].Name, declareFuncDecl.Annotations);
                 }
 
@@ -425,14 +425,14 @@ public sealed class BindDeclarePass() : Pass(PassName, PassScope.PerFile)
             }
             case DeclareVariableDecl declareVarDecl:
             {
-                DeclareSymbol(ctx, scope, declareVarDecl.Name.Name, SymbolKind.Variable, declareVarDecl.ID, declareVarDecl.Name.Span);
+                DeclareSymbol(ctx, scope, declareVarDecl.Name.Name, SymbolKind.Variable, declareVarDecl.ID, declareVarDecl.Name.Span, SymbolFlags.External);
                 StampSide(ctx, scope, declareVarDecl.Name.Name, declareVarDecl.Annotations);
                 pkg.Scopes.BindNode(declareVarDecl.ID, scope);
                 return true;
             }
             case DeclareModuleDecl declareModuleDecl:
             {
-                DeclareSymbol(ctx, scope, declareModuleDecl.ModuleName.Name, SymbolKind.Variable, declareModuleDecl.ID, declareModuleDecl.ModuleName.Span);
+                DeclareSymbol(ctx, scope, declareModuleDecl.ModuleName.Name, SymbolKind.Variable, declareModuleDecl.ID, declareModuleDecl.ModuleName.Span, SymbolFlags.External);
                 StampSide(ctx, scope, declareModuleDecl.ModuleName.Name, declareModuleDecl.Annotations);
                 var moduleScope = pkg.Scopes.NewScope(scope);
                 pkg.Scopes.BindNode(declareModuleDecl.ID, moduleScope);

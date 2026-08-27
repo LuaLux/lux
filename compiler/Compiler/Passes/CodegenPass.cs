@@ -34,7 +34,7 @@ public sealed partial class CodegenPass() : Pass(PassName, PassScope.PerBuild, t
 
     private void EmitFile(PassContext ctx, PackageContext pkg, LuaGenerator gen, PreparsedFile file)
     {
-        var exportedNames = new List<string>();
+        var exportedNames = new List<ExportName>();
         CollectExportNames(ctx, pkg, file.Hir.Body, exportedNames);
 
         _reflectNamespace = ReflectNamespace(ctx, pkg);
@@ -56,9 +56,10 @@ public sealed partial class CodegenPass() : Pass(PassName, PassScope.PerBuild, t
                 gen.Indent();
                 for (var i = 0; i < exportedNames.Count; i++)
                 {
-                    gen.Write(exportedNames[i]);
+                    // The key is the name importers write; only the value follows any renaming.
+                    gen.Write(exportedNames[i].Source);
                     gen.Write(" = ");
-                    gen.Write(exportedNames[i]);
+                    gen.Write(exportedNames[i].Emitted);
                     if (i < exportedNames.Count - 1) gen.Write(",");
                     if (!gen.Minify) gen.NewLine();
                 }
@@ -72,7 +73,14 @@ public sealed partial class CodegenPass() : Pass(PassName, PassScope.PerBuild, t
         }
     }
 
-    private void CollectExportNames(PassContext ctx, PackageContext pkg, List<Stmt> stmts, List<string> names)
+    /// <summary>
+    /// One exported binding: the name importers write, and the name it carries in the emitted
+    /// chunk. The two differ once mangling renames top-level bindings, and the export table has to
+    /// keep the first as its key or no importer could find it.
+    /// </summary>
+    private readonly record struct ExportName(string Source, string Emitted);
+
+    private void CollectExportNames(PassContext ctx, PackageContext pkg, List<Stmt> stmts, List<ExportName> names)
     {
         foreach (var stmt in stmts)
         {
@@ -81,20 +89,20 @@ public sealed partial class CodegenPass() : Pass(PassName, PassScope.PerBuild, t
             {
                 case FunctionDecl fd:
                     if (fd.NamePath.Count > 0)
-                        names.Add(ResolveName(ctx, pkg, fd.NamePath[0]));
+                        names.Add(new ExportName(fd.NamePath[0].Name, ResolveName(ctx, pkg, fd.NamePath[0])));
                     break;
                 case LocalFunctionDecl lfd:
-                    names.Add(ResolveName(ctx, pkg, lfd.Name));
+                    names.Add(new ExportName(lfd.Name.Name, ResolveName(ctx, pkg, lfd.Name)));
                     break;
                 case LocalDecl ld:
                     foreach (var v in ld.Variables)
-                        names.Add(ResolveName(ctx, pkg, v.Name));
+                        names.Add(new ExportName(v.Name.Name, ResolveName(ctx, pkg, v.Name)));
                     break;
                 case EnumDecl ed:
-                    names.Add(ResolveName(ctx, pkg, ed.Name));
+                    names.Add(new ExportName(ed.Name.Name, ResolveName(ctx, pkg, ed.Name)));
                     break;
                 case ClassDecl cd:
-                    names.Add(ResolveName(ctx, pkg, cd.Name));
+                    names.Add(new ExportName(cd.Name.Name, ResolveName(ctx, pkg, cd.Name)));
                     break;
             }
         }
@@ -1738,6 +1746,19 @@ public sealed partial class CodegenPass() : Pass(PassName, PassScope.PerBuild, t
         gen.Write(")");
     }
 
+    /// <summary>
+    /// The emitted name of the type a match arm tests against. The declaration's own name is only
+    /// correct while nothing renames it, so the reference is resolved the same way every other use
+    /// of that type is.
+    /// </summary>
+    private string PatternTypeName(PassContext ctx, PackageContext pkg, TypeRef? typeRef, string fallback)
+    {
+        if (typeRef is NamedTypeRef named) return ResolveName(ctx, pkg, named.Name);
+        if (typeRef is GenericTypeRef generic) return ResolveName(ctx, pkg, generic.Name);
+
+        return fallback;
+    }
+
     private void EmitInstanceOf(PassContext ctx, PackageContext pkg, LuaGenerator gen, InstanceOfExpr iof)
     {
         var helper = gen.GetInstanceOfHelper();
@@ -1915,13 +1936,15 @@ public sealed partial class CodegenPass() : Pass(PassName, PassScope.PerBuild, t
                             case ClassType ct:
                             {
                                 var helper = gen.GetInstanceOfHelper();
-                                gen.Write(helper + "(" + scrutineeTemp + ", " + ct.Name + ")");
+                                gen.Write(helper + "(" + scrutineeTemp + ", "
+                                          + PatternTypeName(ctx, pkg, pattern.TypeRef, ct.Name) + ")");
                                 break;
                             }
                             case InterfaceType it:
                             {
                                 var helper = gen.GetInstanceOfHelper();
-                                gen.Write(helper + "(" + scrutineeTemp + ", " + it.Name + ")");
+                                gen.Write(helper + "(" + scrutineeTemp + ", "
+                                          + PatternTypeName(ctx, pkg, pattern.TypeRef, it.Name) + ")");
                                 break;
                             }
                             default:

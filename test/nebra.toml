@@ -16,3 +16,5 @@ immutable_default = true
 enabled = true
 mangle_locals = true
 mangle_params = true
+mangle_top_level = true
+keep_function_names = false

@@ -54,6 +54,12 @@ public enum SymbolFlags
     Unused = 1 << 4,
     Async = 1 << 5,
     Static = 1 << 6,
+    /// <summary>
+    /// The symbol names something provided from outside the generated code: anything introduced by
+    /// a <c>declare</c> form, including everything the stdlib declaration files bring in. Its name
+    /// is fixed by whatever supplies it at runtime, so mangling must leave it alone.
+    /// </summary>
+    External = 1 << 7,
 }
 
 /// <summary>

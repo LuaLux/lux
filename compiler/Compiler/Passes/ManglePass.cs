@@ -50,6 +50,10 @@ public sealed class ManglePase() : Pass(PassName, PassScope.PerFile, true)
         // would leave the body reading a global that nothing ever assigns.
         if (sym.Name == "self") return false;
 
+        // Anything a `declare` form introduced is supplied from outside the generated code, under
+        // the name it is written with. Renaming it would call something that does not exist.
+        if (sym.Flags.HasFlag(SymbolFlags.External)) return false;
+
         var isTopLevel = sym.Owner == pc.Pkg!.Root;
 
         if (sym.Kind == SymbolKind.Function)
