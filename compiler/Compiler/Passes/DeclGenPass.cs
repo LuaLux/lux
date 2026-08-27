@@ -22,7 +22,9 @@ public sealed class DeclGenPass() : Pass(PassName, PassScope.PerBuild, true)
             foreach (var file in pkg.Files)
             {
                 if (file.IsDeclarationFile) continue;
-                if (file.Filename == null) continue;
+                // Empty as well as null: the REPL compiles a synthetic file that has no path, and
+                // Path.GetFullPath throws on an empty string.
+                if (string.IsNullOrEmpty(file.Filename)) continue;
 
                 var fullPath = Path.GetFullPath(file.Filename);
                 if (!fullPath.Equals(sourceRoot, StringComparison.OrdinalIgnoreCase)
