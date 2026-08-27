@@ -952,8 +952,10 @@ public sealed class InferTypesPass() : Pass(PassName, PassScope.PerBuild)
             var methodParams = new List<Tuple<string, Type>>();
             var ifaceIsVararg = false;
             Type? ifaceVarargType = null;
-            foreach (var p in method.Parameters)
+            var defaultIndices = new List<int>();
+            for (var i = 0; i < method.Parameters.Count; i++)
             {
+                var p = method.Parameters[i];
                 var t = ResolveParamType(pc, p);
                 if (p.IsVararg)
                 {
@@ -965,11 +967,17 @@ public sealed class InferTypesPass() : Pass(PassName, PassScope.PerBuild)
                     methodParams.Add(new Tuple<string, Type>(p.Name.Name, t));
                 }
                 if (p.Name.Sym != SymID.Invalid) pc.Pkg!.Syms.SetType(p.Name.Sym, t.ID);
+                if (p.DefaultValue != null)
+                {
+                    SynthesizeExpr(pc, p.DefaultValue);
+                    defaultIndices.Add(i);
+                }
             }
             var retType = method.ReturnType != null && method.ReturnType.ResolvedType != TypID.Invalid
                 ? GetType(pc, method.ReturnType.ResolvedType) : pc.Types.PrimNil;
             var ifaceFt = (FunctionType)GetType(pc,
-                pc.Types.FuncOf(methodParams, retType, ifaceIsVararg, ifaceVarargType, isAsync: method.IsAsync,
+                pc.Types.FuncOf(methodParams, retType, ifaceIsVararg, ifaceVarargType,
+                    defaultIndices.Count > 0 ? defaultIndices : null, method.IsAsync,
                     predicate: BuildPredicate(pc, method.ReturnType, method.Parameters)));
             var methodSide = Nebra.Compiler.Annotations.BuiltinAnnotations.ExtractSide(method.Annotations,
                 (ann, badName) => ReportBadSide(pc, ann, badName));

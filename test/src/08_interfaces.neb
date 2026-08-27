@@ -48,6 +48,19 @@ declare class Character extends Entity implements Paintable
     function respawn(): nil
 end
 
+interface Configurable
+    function label(prefix: string = "cfg"): string
+    function describe(suffix: string = "!"): string
+        return "default" .. suffix
+    end
+end
+
+class Widget implements Configurable
+    function label(prefix: string = "cfg"): string
+        return prefix .. ":widget"
+    end
+end
+
 local function inspectExternal(c: Character): number
     c:setColor("red")
     c:respawn()
@@ -67,4 +80,13 @@ export function run(): nil
     expectEq("polymorphic call", callGreet(r), "beep, I am R2")
 
     expectEq("declared class inherits interface signatures", type(inspectExternal), "function")
+
+    local w = new Widget()
+    expectEq("interface default param omitted", w:label(), "cfg:widget")
+    expectEq("interface default param supplied", w:label("ui"), "ui:widget")
+    expectEq("inherited default method uses its default", w:describe(), "default!")
+    expectEq("inherited default method with argument", w:describe("?"), "default?")
+
+    local c: Configurable = w
+    expectEq("default param through interface receiver", c:label(), "cfg:widget")
 end
