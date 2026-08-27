@@ -45,6 +45,11 @@ public sealed class ManglePase() : Pass(PassName, PassScope.PerFile, true)
 
     private bool ShouldMangleSymbol(PassContext pc, Configuration.MangleSection mc, Symbol sym)
     {
+        // `self` is bound by Lua itself: a method emitted as `function Cls:name(...)` receives it
+        // implicitly, and an extension method takes it under that exact name. Renaming the symbol
+        // would leave the body reading a global that nothing ever assigns.
+        if (sym.Name == "self") return false;
+
         var isTopLevel = sym.Owner == pc.Pkg!.Root;
 
         if (sym.Kind == SymbolKind.Function)

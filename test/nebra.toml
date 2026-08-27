@@ -11,3 +11,8 @@ index_base = 1
 [rules]
 exhaustive_match = "relaxed"
 immutable_default = true
+
+[mangle]
+enabled = true
+mangle_locals = true
+mangle_params = true

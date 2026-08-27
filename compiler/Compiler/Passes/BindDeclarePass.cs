@@ -1,4 +1,4 @@
-using Nebra.Compiler.Annotations;
+﻿using Nebra.Compiler.Annotations;
 using Nebra.Configuration;
 using Nebra.Diagnostics;
 using Nebra.IR;
@@ -248,6 +248,7 @@ public sealed class BindDeclarePass() : Pass(PassName, PassScope.PerFile)
                     if (arm.Pattern.Kind == MatchPatternKind.TypeBinding && arm.Pattern.Binding != null)
                     {
                         DeclareSymbol(ctx, armScope, arm.Pattern.Binding.Name, SymbolKind.Variable, matchStmt.ID);
+                        BindPatternBinding(pkg, armScope, arm.Pattern.Binding);
                     }
                     if (arm.Pattern.ValueExpr != null && !BindExprScopes(ctx, arm.Pattern.ValueExpr, scope)) return false;
                     if (arm.Guard != null && !BindExprScopes(ctx, arm.Guard, armScope)) return false;
@@ -736,6 +737,7 @@ public sealed class BindDeclarePass() : Pass(PassName, PassScope.PerFile)
                     if (arm.Pattern.Kind == MatchPatternKind.TypeBinding && arm.Pattern.Binding != null)
                     {
                         DeclareSymbol(ctx, armScope, arm.Pattern.Binding.Name, SymbolKind.Variable, matchExpr.ID);
+                        BindPatternBinding(pkg, armScope, arm.Pattern.Binding);
                     }
                     if (arm.Pattern.ValueExpr != null && !BindExprScopes(ctx, arm.Pattern.ValueExpr, scope)) return false;
                     if (arm.Guard != null && !BindExprScopes(ctx, arm.Guard, armScope)) return false;
@@ -782,6 +784,18 @@ public sealed class BindDeclarePass() : Pass(PassName, PassScope.PerFile)
             return;
         }
         DeclareSymbol(ctx, scope, nameRef.Name, SymbolKind.Variable, importNode, nameRef.Span);
+    }
+
+    /// <summary>
+    /// Points a match arm's type-binding name at the symbol just declared for it. Without this the
+    /// name reference carries no symbol, so anything resolving through it falls back to the source
+    /// spelling: with mangling on, the arm declared the raw name while its body read the mangled
+    /// one.
+    /// </summary>
+    private static void BindPatternBinding(PackageContext pkg, ScopeID armScope, NameRef binding)
+    {
+        if (pkg.Scopes.LookupOnlyCurrent(armScope, binding.Name, out var sym))
+            binding.Sym = sym;
     }
 
     private static void DeclareSymbol(PassContext ctx, ScopeID scope, string name, SymbolKind kind, NodeID decl, params SymbolFlags[] flags)
