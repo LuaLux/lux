@@ -96,6 +96,25 @@ class Vec
     end
 end
 
+class Sized
+    entries: number[] = {}
+
+    get count(): number
+        return #self.entries
+    end
+
+    get tag(): string
+        return "sized"
+    end
+    set tag(v: string)
+        self.entries = {}
+    end
+
+    function add(n: number): nil
+        self.entries[#self.entries + 1] = n
+    end
+end
+
 class Greeting
     text: string
     punctuation: string
@@ -163,6 +182,13 @@ export function run(): nil
     b:push(2)
     b:push(3)
     expectEq("getter returns size", b.size, 3)
+
+    -- Accessors: a settable property stays writable
+    local sized = new Sized()
+    sized:add(7)
+    expectEq("getter reflects mutation", sized.count, 1)
+    sized.tag = "reset"
+    expectEq("setter ran", sized.count, 0)
 
     -- Constructor parameter defaults
     expectEq("constructor defaults, none supplied", (new Greeting()):render(), "hello!")

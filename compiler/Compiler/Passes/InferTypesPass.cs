@@ -701,6 +701,8 @@ public sealed class InferTypesPass() : Pass(PassName, PassScope.PerBuild)
                 pc.Diag.Report(iface.Span, Diagnostics.DiagnosticCode.ErrImplementsNonInterface, iface.Name);
         }
 
+        CheckDuplicateMembers(pc, cd);
+
         foreach (var field in cd.Fields)
         {
             if (field.DefaultValue != null) SynthesizeExpr(pc, field.DefaultValue);
@@ -866,6 +868,62 @@ public sealed class InferTypesPass() : Pass(PassName, PassScope.PerBuild)
 
         CheckInterfaceImplementation(pc, cd, classType);
         CheckAbstractImplementation(pc, cd, classType);
+    }
+
+    /// <summary>
+    /// Reports members a class declares more than once. Fields and accessors collide on their
+    /// name alone; methods do not, because a class may carry several overloads of one name. Two
+    /// methods only collide when they agree on both their signature and their <c>@side</c>, which
+    /// is what makes one of them unreachable at every call site.
+    /// </summary>
+    private void CheckDuplicateMembers(PassContext pc, ClassDecl cd)
+    {
+        var fieldNames = new HashSet<string>(StringComparer.Ordinal);
+        foreach (var field in cd.Fields)
+        {
+            if (field.IsLocal) continue;
+            if (fieldNames.Add(field.Name.Name)) continue;
+
+            pc.Diag.Report(field.Name.Span, Diagnostics.DiagnosticCode.ErrDuplicateClassMember, field.Name.Name);
+        }
+
+        var accessorKeys = new HashSet<string>(StringComparer.Ordinal);
+        foreach (var accessor in cd.Accessors)
+        {
+            if (accessorKeys.Add(accessor.Kind + " " + accessor.Name.Name)) continue;
+
+            pc.Diag.Report(accessor.Name.Span, Diagnostics.DiagnosticCode.ErrDuplicateClassMember, accessor.Name.Name);
+        }
+
+        var methodKeys = new HashSet<string>(StringComparer.Ordinal);
+        foreach (var method in cd.Methods)
+        {
+            if (method.IsLocal) continue;
+
+            var side = Nebra.Compiler.Annotations.BuiltinAnnotations.ExtractSide(method.Annotations, (_, _) => { });
+            var key = $"{(method.IsStatic ? "static " : "")}{method.Name.Name}({MethodParamKey(pc, method)}) @{side}";
+            if (methodKeys.Add(key)) continue;
+
+            pc.Diag.Report(method.Name.Span, Diagnostics.DiagnosticCode.ErrDuplicateClassMember, method.Name.Name);
+        }
+    }
+
+    /// <summary>
+    /// Renders a method's declared parameter types as a comparable key. Two methods sharing it are
+    /// the same overload, not two of them.
+    /// </summary>
+    private string MethodParamKey(PassContext pc, ClassMethodNode method)
+    {
+        var parts = new List<string>();
+        foreach (var p in method.Parameters)
+        {
+            var typ = p.TypeAnnotation != null && p.TypeAnnotation.ResolvedType != TypID.Invalid
+                ? TypeName(pc, p.TypeAnnotation.ResolvedType)
+                : "any";
+            parts.Add(p.IsVararg ? "..." + typ : typ);
+        }
+
+        return string.Join(", ", parts);
     }
 
     /// <summary>
@@ -1637,6 +1695,8 @@ public sealed class InferTypesPass() : Pass(PassName, PassScope.PerBuild)
             var narrowedPath = GetAccessPath(target);
             if (narrowedPath != null) _narrowed.Remove(narrowedPath);
 
+            CheckAssignableTarget(pc, target);
+
             var targetType = SynthesizeExpr(pc, target);
             if (i < valueTypes.Count && targetType != TypID.Invalid && targetType != pc.Types.PrimAny.ID)
             {
@@ -1646,6 +1706,31 @@ public sealed class InferTypesPass() : Pass(PassName, PassScope.PerBuild)
                         TypeName(pc, targetType), TypeName(pc, valueTypes[i]));
                 }
             }
+        }
+    }
+
+    /// <summary>
+    /// Rejects an assignment to a property that only declares a getter. The write would be
+    /// dropped: codegen routes the read through <c>__get_name</c> and has no setter to route the
+    /// write to. A property declaring both an accessor and a plain field of the same name is left
+    /// alone, since the field carries the value.
+    /// </summary>
+    private void CheckAssignableTarget(PassContext pc, Expr target)
+    {
+        if (target is not DotAccessExpr dot) return;
+
+        var objTyp = SynthesizeExpr(pc, dot.Object);
+        if (!pc.Pkg!.Types.GetByID(objTyp, out var objType)) return;
+        if (objType is not ClassType classType) return;
+
+        var name = dot.FieldName.Name;
+        for (var cur = classType; cur != null; cur = cur.BaseClass)
+        {
+            if (cur.InstanceFields.ContainsKey(name) || cur.Setters.ContainsKey(name)) return;
+            if (!cur.Getters.ContainsKey(name)) continue;
+
+            pc.Diag.Report(dot.FieldName.Span, DiagnosticCode.ErrWriteToReadonly, name);
+            return;
         }
     }
 
@@ -2164,7 +2249,12 @@ public sealed class InferTypesPass() : Pass(PassName, PassScope.PerBuild)
         }
 
         var ctorType = ResolveConstructorType(classType);
-        if (ctorType != null)
+        if (ctorType == null)
+        {
+            if (newExpr.Arguments.Count > 0)
+                pc.Diag.Report(newExpr.Span, DiagnosticCode.ErrNoConstructor, newExpr.ClassName.Name);
+        }
+        else
         {
             var argCount = newExpr.Arguments.Count;
             var paramCount = ctorType.ParamTypes.Count;
