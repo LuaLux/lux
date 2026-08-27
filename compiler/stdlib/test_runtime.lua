@@ -276,10 +276,13 @@ end
 
 function M.__results() return state end
 
+-- The summary prints in quiet mode too: quiet suppresses the per-test ticks, not the result. A run
+-- whose outcome is invisible is worse than a noisy one, and a failing run has to name its failures.
 function M.__summary()
-    if state.quiet then return end
-    print("")
-    print("-----------------------------------------")
+    if not state.quiet then
+        print("")
+        print("-----------------------------------------")
+    end
     local total = state.passed + state.failed
     if state.failed > 0 then
         print(ANSI_RED .. "✗ " .. tostring(state.failed) .. " failed" .. ANSI_RESET
