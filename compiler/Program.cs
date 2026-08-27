@@ -1,4 +1,4 @@
-using System.Diagnostics;
+﻿using System.Diagnostics;
 using System.Reflection;
 using System.Runtime.InteropServices;
 using System.Text;
@@ -393,13 +393,23 @@ internal static class Program
         return 0;
     }
 
+    /// <summary>
+    /// Writes the generated Lua for every file this project owns. Files pulled in from outside
+    /// <paramref name="baseDir"/> - a dependency's sources under <c>nebra_modules/</c>, a path
+    /// from <c>[code] libs</c> - are compiled into the type universe but never written: their
+    /// relative path would escape <paramref name="outDir"/> and land back in the dependency,
+    /// overwriting the output that dependency built under its own configuration.
+    /// </summary>
     private static async Task WriteOutputFilesAsync(NebraCompiler compiler, string baseDir, string outDir, Config config)
     {
+        var fullBaseDir = Path.GetFullPath(baseDir);
+
         foreach (var pkg in compiler.Packages.Values)
         {
             foreach (var file in pkg.Files)
             {
                 if (string.IsNullOrEmpty(file.GeneratedLua)) continue;
+                if (file.Filename != null && !IsUnderDirectory(file.Filename, fullBaseDir)) continue;
 
                 var relativePath = Path.GetRelativePath(baseDir, file.Filename ?? "output.lua");
                 var outputPath = Path.Combine(outDir, Path.ChangeExtension(relativePath, ".lua"));
@@ -419,6 +429,19 @@ internal static class Program
         }
         
         await CopyAssetsAsync(outDir, config);
+    }
+
+    /// <summary>
+    /// Reports whether <paramref name="path"/> sits inside <paramref name="fullRoot"/>, which is
+    /// expected to be an absolute path already.
+    /// </summary>
+    private static bool IsUnderDirectory(string path, string fullRoot)
+    {
+        var full = Path.GetFullPath(path);
+        if (full.Equals(fullRoot, StringComparison.OrdinalIgnoreCase)) return true;
+
+        var prefix = fullRoot.EndsWith(Path.DirectorySeparatorChar) ? fullRoot : fullRoot + Path.DirectorySeparatorChar;
+        return full.StartsWith(prefix, StringComparison.OrdinalIgnoreCase);
     }
 
     private static async Task CopyAssetsAsync(string outDir, Config config)
@@ -1485,6 +1508,7 @@ internal static class Program
                 if (file.Filename == null) continue;
                 if (!file.Filename.EndsWith(".neb", StringComparison.OrdinalIgnoreCase)) continue;
                 if (file.Filename.EndsWith(".d.neb", StringComparison.OrdinalIgnoreCase)) continue;
+                if (!IsUnderDirectory(file.Filename, normalizedSrc)) continue;
 
                 var moduleName = ModuleNameFor(file.Filename, normalizedSrc, modulesDir);
                 if (moduleName == null) continue;
@@ -1497,7 +1521,9 @@ internal static class Program
         }
 
         // Pre-built .lua files inside nebra_modules/ (not produced by NebraCompiler).
-        // These are how pure-Lua packages or pre-compiled Nebra packages ship.
+        // These are how pure-Lua packages or pre-compiled Nebra packages ship. A dependency's
+        // sources are compiled into the type universe but never bundled from there: it built its
+        // own output under its own configuration, and that is the code its callers expect.
         if (Directory.Exists(modulesDir))
         {
             foreach (var luaPath in Directory.EnumerateFiles(modulesDir, "*.lua", SearchOption.AllDirectories))

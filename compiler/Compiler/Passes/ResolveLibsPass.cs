@@ -1,4 +1,4 @@
-using System.Reflection;
+﻿using System.Reflection;
 using Antlr4.Runtime;
 using Nebra.IR;
 using Nebra.PackageManager;
@@ -48,9 +48,29 @@ public sealed class ResolveLibsPass() : Pass(PassName, PassScope.PerBuild)
         foreach (var pkg in GetInstalledPackages(context))
         {
             if (!Directory.Exists(pkg.RootPath)) continue;
+
+            var outputRoot = pkg.OutputRoot;
             foreach (var file in Directory.EnumerateFiles(pkg.RootPath, "*.d.neb", SearchOption.AllDirectories))
+            {
+                if (IsUnder(file, outputRoot)) continue;
                 LoadDeclFile(context, file);
+            }
         }
+    }
+
+    /// <summary>
+    /// Reports whether <paramref name="path"/> sits inside <paramref name="root"/>. Used to leave
+    /// a dependency's own build output out of the declaration scan: the declarations it generates
+    /// there restate what its sources already declare, and loading both makes every exported
+    /// symbol collide with itself.
+    /// </summary>
+    private static bool IsUnder(string path, string? root)
+    {
+        if (string.IsNullOrEmpty(root)) return false;
+
+        var full = Path.GetFullPath(path);
+        var prefix = root.EndsWith(Path.DirectorySeparatorChar) ? root : root + Path.DirectorySeparatorChar;
+        return full.StartsWith(prefix, StringComparison.OrdinalIgnoreCase);
     }
 
     /// <summary>

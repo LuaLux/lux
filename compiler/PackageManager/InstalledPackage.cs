@@ -1,4 +1,4 @@
-using Nebra.Configuration;
+﻿using Nebra.Configuration;
 
 namespace Nebra.PackageManager;
 
@@ -9,6 +9,20 @@ namespace Nebra.PackageManager;
 /// </summary>
 public sealed record InstalledPackage(string Name, string RootPath, Config? Manifest)
 {
+    /// <summary>
+    /// The package's own build output directory, as named by its manifest, or <c>null</c> when
+    /// the package ships no manifest. Declaration files under it are generated from the package's
+    /// own sources, so consuming them alongside those sources declares everything twice.
+    /// </summary>
+    public string? OutputRoot
+    {
+        get
+        {
+            if (Manifest is null || string.IsNullOrWhiteSpace(Manifest.Output)) return null;
+            return Path.GetFullPath(Path.Combine(RootPath, Manifest.Output));
+        }
+    }
+
     /// <summary>
     /// The directories under the package root that should be scanned for annotation plugins.
     /// Empty means the package root itself.
