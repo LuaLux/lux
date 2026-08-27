@@ -621,8 +621,10 @@ public sealed class InferTypesPass() : Pass(PassName, PassScope.PerBuild)
                 var paramTypes = new List<Tuple<string, Type>>();
                 var dfdIsVararg = false;
                 Type? dfdVarargType = null;
-                foreach (var param in dfd.Parameters)
+                var dfdDefaults = new List<int>();
+                for (var i = 0; i < dfd.Parameters.Count; i++)
                 {
+                    var param = dfd.Parameters[i];
                     var t = ResolveParamType(pc, param);
                     if (param.IsVararg)
                     {
@@ -637,12 +639,17 @@ public sealed class InferTypesPass() : Pass(PassName, PassScope.PerBuild)
                     {
                         pc.Pkg!.Syms.SetType(param.Name.Sym, t.ID);
                     }
+                    if (param.DefaultValue != null && !param.IsVararg)
+                    {
+                        dfdDefaults.Add(i);
+                    }
                 }
 
                 var ret = dfd.ReturnType != null && dfd.ReturnType.ResolvedType != TypID.Invalid
                     ? GetType(pc, dfd.ReturnType.ResolvedType)
                     : pc.Types.PrimNil;
-                var funcTyp = pc.Types.FuncOf(paramTypes, ret, dfdIsVararg, dfdVarargType, isAsync: dfd.IsAsync,
+                var funcTyp = pc.Types.FuncOf(paramTypes, ret, dfdIsVararg, dfdVarargType,
+                    dfdDefaults.Count > 0 ? dfdDefaults : null, dfd.IsAsync,
                     predicate: BuildPredicate(pc, dfd.ReturnType, dfd.Parameters));
                 if (dfd.NamePath.Count == 1 && dfd.MethodName == null)
                 {

@@ -85,6 +85,12 @@ class SizedBox implements Sized
     end
 end
 
+declare function sizedDefault(a: number, b: string = ...): string
+
+local function usesDeclaredDefault(): string
+    return sizedDefault(1)
+end
+
 local function inspectExternal(c: Character): number
     c:setColor("red")
     c:respawn()
@@ -104,6 +110,7 @@ export function run(): nil
     expectEq("polymorphic call", callGreet(r), "beep, I am R2")
 
     expectEq("declared class inherits interface signatures", type(inspectExternal), "function")
+    expectEq("declared parameter default makes the argument optional", type(usesDeclaredDefault), "function")
 
     local w = new Widget()
     expectEq("interface default param omitted", w:label(), "cfg:widget")

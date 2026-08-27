@@ -1,4 +1,4 @@
-using System.Text;
+﻿using System.Text;
 using Nebra.IR;
 using Type = Nebra.IR.Type;
 
@@ -291,7 +291,7 @@ public sealed class DeclGenPass() : Pass(PassName, PassScope.PerBuild, true)
             if (field.TypeAnnotation != null)
             {
                 sb.Append(": ");
-                sb.Append(FormatSymType(ctx, pkg, field.Name));
+                sb.Append(FormatAnnotatedType(ctx, pkg, field.TypeAnnotation, field.Name));
             }
             sb.AppendLine();
         }
@@ -357,7 +357,7 @@ public sealed class DeclGenPass() : Pass(PassName, PassScope.PerBuild, true)
             sb.Append("        ");
             sb.Append(field.Name.Name);
             sb.Append(": ");
-            sb.Append(FormatSymType(ctx, pkg, field.Name));
+            sb.Append(FormatAnnotatedType(ctx, pkg, field.TypeAnnotation, field.Name));
             sb.AppendLine();
         }
 
@@ -437,6 +437,22 @@ public sealed class DeclGenPass() : Pass(PassName, PassScope.PerBuild, true)
 
         sb.Append(": ");
         sb.Append(FormatType(ctx, typ));
+    }
+
+    /// <summary>
+    /// Renders the type a declaration was annotated with. A class or interface field is a member
+    /// rather than a scope symbol, so it has no symbol to read a type off; the resolved annotation
+    /// is what carries it. Falls back to the symbol for anything that does have one.
+    /// </summary>
+    private string FormatAnnotatedType(PassContext ctx, PackageContext pkg, TypeRef? typeRef, NameRef nameRef)
+    {
+        if (typeRef != null && typeRef.ResolvedType != TypID.Invalid
+            && ctx.Types.GetByID(typeRef.ResolvedType, out var resolved))
+        {
+            return FormatType(ctx, resolved);
+        }
+
+        return FormatSymType(ctx, pkg, nameRef);
     }
 
     private string FormatSymType(PassContext ctx, PackageContext pkg, NameRef nameRef)
