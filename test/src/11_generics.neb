@@ -45,8 +45,16 @@ local function pair<A, B>(a: A, b: B): (A, B)
     return a, b
 end
 
+extend number
+    function boxed(): Box<number>
+        return new Box(self)
+    end
+end
+
 export function run(): nil
     section("generics")
+
+    expectEq("generic type inside an extend block", (7):boxed():get(), 7)
 
     local intBox: Box<number> = new Box(42)
     expectEq("Box<number>", intBox:get(), 42)

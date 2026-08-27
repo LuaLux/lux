@@ -1,4 +1,4 @@
-using Nebra.Configuration;
+﻿using Nebra.Configuration;
 using Nebra.Diagnostics;
 using Nebra.IR;
 
@@ -180,6 +180,23 @@ public sealed class CheckSidesPass()
                     foreach (var p in m.Parameters)
                         if (p.TypeAnnotation != null) VisitTypeRef(ctx, p.TypeAnnotation, fileMask);
                     if (m.ReturnType != null) VisitTypeRef(ctx, m.ReturnType, fileMask);
+                    if (m.Body == null) continue;
+                    VisitStmtList(ctx, m.Body, fileMask);
+                    if (m.ReturnStmt != null) VisitStmt(ctx, m.ReturnStmt, fileMask);
+                }
+                break;
+            case ExtendDecl ed:
+                VisitTypeRef(ctx, ed.TargetType, fileMask);
+                foreach (var m in ed.Methods)
+                {
+                    foreach (var p in m.Parameters)
+                    {
+                        if (p.TypeAnnotation != null) VisitTypeRef(ctx, p.TypeAnnotation, fileMask);
+                        if (p.DefaultValue != null) VisitExpr(ctx, p.DefaultValue, fileMask);
+                    }
+                    if (m.ReturnType != null) VisitTypeRef(ctx, m.ReturnType, fileMask);
+                    VisitStmtList(ctx, m.Body, fileMask);
+                    if (m.ReturnStmt != null) VisitStmt(ctx, m.ReturnStmt, fileMask);
                 }
                 break;
         }

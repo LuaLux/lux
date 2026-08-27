@@ -1,4 +1,4 @@
-using Nebra.Diagnostics;
+﻿using Nebra.Diagnostics;
 using Nebra.IR;
 
 namespace Nebra.Compiler.Passes;
@@ -147,6 +147,21 @@ public sealed class ValidateGenericConstraintsPass() : Pass(PassName, PassScope.
                     foreach (var p in m.Parameters)
                         if (p.TypeAnnotation != null) VisitTypeRef(ctx, pkg, p.TypeAnnotation);
                     if (m.ReturnType != null) VisitTypeRef(ctx, pkg, m.ReturnType);
+                    if (m.Body == null) continue;
+                    foreach (var s in m.Body) VisitStmt(ctx, pkg, s);
+                }
+                break;
+            case ExtendDecl ed:
+                VisitTypeRef(ctx, pkg, ed.TargetType);
+                foreach (var m in ed.Methods)
+                {
+                    foreach (var p in m.Parameters)
+                    {
+                        if (p.TypeAnnotation != null) VisitTypeRef(ctx, pkg, p.TypeAnnotation);
+                        if (p.DefaultValue != null) VisitExpr(ctx, pkg, p.DefaultValue);
+                    }
+                    if (m.ReturnType != null) VisitTypeRef(ctx, pkg, m.ReturnType);
+                    foreach (var s in m.Body) VisitStmt(ctx, pkg, s);
                 }
                 break;
         }
