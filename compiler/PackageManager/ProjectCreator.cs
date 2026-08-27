@@ -1,4 +1,4 @@
-using System.Net.Http;
+﻿using System.Net.Http;
 using Nebra.Compiler;
 using Nebra.Configuration;
 using Nebra.Runtime;
@@ -174,7 +174,7 @@ public sealed class ProjectCreator
             Directory.CreateDirectory(NebraHome.GitCacheRoot);
 
             Console.WriteLine($"Fetching {specString}...");
-            var barePath = await _fetcher.EnsureBareCloneAsync(spec);
+            var barePath = await _fetcher.EnsureBareCloneAsync(spec, opts.Offline);
             var commit = await ResolveGitRefAsync(barePath, spec);
             await _fetcher.EnsureSnapshotAsync(barePath, commit, stagingDir, spec.Subdir, forceFresh: true);
 

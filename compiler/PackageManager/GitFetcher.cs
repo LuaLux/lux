@@ -1,4 +1,4 @@
-using System.Formats.Tar;
+﻿using System.Formats.Tar;
 using System.Security.Cryptography;
 using System.Text;
 
@@ -19,8 +19,11 @@ public sealed class GitFetcher
 
     /// <summary>
     /// Ensures a bare clone exists in the cache and is up to date. Returns the bare-clone path.
+    /// In <paramref name="offline"/> mode the cache is used exactly as it stands: an entry that is
+    /// there is neither refreshed nor re-cloned, and one that is missing is an error rather than a
+    /// silent network fetch.
     /// </summary>
-    public async Task<string> EnsureBareCloneAsync(PackageSpec spec)
+    public async Task<string> EnsureBareCloneAsync(PackageSpec spec, bool offline = false)
     {
         if (spec.Kind != SpecKind.Git)
             throw new InvalidOperationException("EnsureBareCloneAsync requires a git spec");
@@ -30,6 +33,13 @@ public sealed class GitFetcher
         Directory.CreateDirectory(parent);
 
         var headExists = File.Exists(Path.Combine(barePath, "HEAD"));
+        if (offline)
+        {
+            if (headExists) return barePath;
+            throw new PackageManagerException(
+                $"offline mode: {spec.CloneUrl} is not in the cache, so it cannot be fetched");
+        }
+
         if (headExists)
         {
             await EnsureMirrorRefspecAsync(barePath);
