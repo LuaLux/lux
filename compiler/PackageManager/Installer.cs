@@ -507,13 +507,28 @@ public sealed class Installer
         return (resolved, versionTag);
     }
 
+    /// <summary>
+    /// Ensures the store holds a snapshot of the locked commit. The bare clone is refreshed
+    /// first; a commit still missing afterwards means the cache entry is stale, which is
+    /// reported as such instead of surfacing as a raw <c>git archive</c> failure.
+    /// </summary>
     private async Task EnsureStorePopulatedAsync(LockedPackage locked, PackageSpec spec)
     {
         if (spec.Kind != SpecKind.Git) return;
         var storePath = NebraHome.PackagePath(spec.Host!, spec.Owner!, spec.Repo!, locked.Commit);
         if (Directory.Exists(storePath) && Directory.EnumerateFileSystemEntries(storePath).Any())
             return;
+
         var barePath = await _fetcher.EnsureBareCloneAsync(spec);
+
+        if (!await GitFetcher.CommitExistsAsync(barePath, locked.Commit))
+        {
+            var shortCommit = locked.Commit.Length > 8 ? locked.Commit[..8] : locked.Commit;
+            throw new PackageManagerException(
+                $"commit {shortCommit} of '{locked.Name}' is missing from the cached clone of {spec.CloneUrl} " +
+                "after fetching. The cache entry looks stale: run 'nebra pm prune' and install again.");
+        }
+
         await _fetcher.EnsureSnapshotAsync(barePath, locked.Commit, storePath, spec.Subdir);
     }
 

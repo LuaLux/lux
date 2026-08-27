@@ -11,6 +11,13 @@ namespace Nebra.PackageManager;
 public sealed class GitFetcher
 {
     /// <summary>
+    /// Refspec that keeps a cache entry mirroring the remote's branches. <c>git clone --bare</c>
+    /// writes no <c>remote.origin.fetch</c> at all, and a fetch without one updates nothing while
+    /// still exiting successfully, which freezes the cache entry at the commit it was cloned at.
+    /// </summary>
+    private const string MirrorRefspec = "+refs/heads/*:refs/heads/*";
+
+    /// <summary>
     /// Ensures a bare clone exists in the cache and is up to date. Returns the bare-clone path.
     /// </summary>
     public async Task<string> EnsureBareCloneAsync(PackageSpec spec)
@@ -25,6 +32,7 @@ public sealed class GitFetcher
         var headExists = File.Exists(Path.Combine(barePath, "HEAD"));
         if (headExists)
         {
+            await EnsureMirrorRefspecAsync(barePath);
             var (ec, _, err) = await GitRunner.RunAsync(barePath, "fetch", "--all", "--tags", "--quiet", "--prune");
             if (ec != 0) throw new PackageManagerException($"git fetch failed for {spec.CloneUrl}: {err.Trim()}");
         }
@@ -37,9 +45,41 @@ public sealed class GitFetcher
             }
             var (ec, _, err) = await GitRunner.RunAsync(null, "clone", "--bare", "--quiet", spec.CloneUrl!, barePath);
             if (ec != 0) throw new PackageManagerException($"git clone failed for {spec.CloneUrl}: {err.Trim()}");
+
+            await EnsureMirrorRefspecAsync(barePath);
         }
 
         return barePath;
+    }
+
+    /// <summary>
+    /// Makes sure the cache entry at <paramref name="barePath"/> carries <see cref="MirrorRefspec"/>
+    /// as its only fetch refspec. Run before every refresh, so an entry created by an earlier
+    /// version repairs itself on the next install instead of having to be pruned by hand.
+    /// </summary>
+    private static async Task EnsureMirrorRefspecAsync(string barePath)
+    {
+        var (ec, existing, _) = await GitRunner.RunAsync(barePath, "config", "--get-all", "remote.origin.fetch");
+        var configured = ec == 0
+            ? existing.Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            : [];
+
+        if (configured is [MirrorRefspec]) return;
+
+        var (setEc, _, setErr) = await GitRunner.RunAsync(barePath,
+            "config", "--replace-all", "remote.origin.fetch", MirrorRefspec);
+        if (setEc != 0)
+            throw new PackageManagerException($"git config remote.origin.fetch failed for {barePath}: {setErr.Trim()}");
+    }
+
+    /// <summary>
+    /// Reports whether <paramref name="commit"/> is present in the bare clone. Used to turn a
+    /// stale cache into a clear error instead of a confusing failure further down the line.
+    /// </summary>
+    public static async Task<bool> CommitExistsAsync(string barePath, string commit)
+    {
+        var (ec, _, _) = await GitRunner.RunAsync(barePath, "cat-file", "-e", commit + "^{commit}");
+        return ec == 0;
     }
 
     /// <summary>
