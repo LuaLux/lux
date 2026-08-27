@@ -1,10 +1,8 @@
 <p align="center">
-  <img src="assets/logo.png" alt="Nebra" width="200px" />
+  <a href="https://nebra-lang.github.io">
+    <img src="assets/banner.png" alt="Nebra" width="640" />
+  </a>
 </p>
-
-<h1>
-    <p align="center">Nebra</p>
-</h1>
 
 <p align="center">
   <strong>A typed superset of Lua that transpiles to clean, portable Lua.</strong><br/>
@@ -21,6 +19,7 @@
 <p align="center">
   <a href="#why-nebra">Why Nebra</a> &bull;
   <a href="#install">Install</a> &bull;
+  <a href="#coming-from-lux">From Lux</a> &bull;
   <a href="#five-minute-tour">Tour</a> &bull;
   <a href="#cli">CLI</a> &bull;
   <a href="#package-manager">Packages</a> &bull;
@@ -130,16 +129,16 @@ dotnet build Nebra.sln
 
 ### Editor support
 
-The [**Nebra VS Code extension**](https://marketplace.visualstudio.com/items?itemName=DasDarki.neb-lang) is on the Marketplace. Install it from inside VS Code (Quick Open `Ctrl+P` / `Cmd+P`):
+The [**Nebra VS Code extension**](https://marketplace.visualstudio.com/items?itemName=DasDarki.nebra) is on the Marketplace. Install it from inside VS Code (Quick Open `Ctrl+P` / `Cmd+P`):
 
 ```
-ext install DasDarki.neb-lang
+ext install DasDarki.nebra
 ```
 
 Or via the CLI:
 
 ```bash
-code --install-extension DasDarki.neb-lang
+code --install-extension DasDarki.nebra
 ```
 
 Prefer to build from source? The extension lives in [`vscode-nebra/`](vscode-nebra/):
@@ -151,6 +150,28 @@ code --install-extension nebra-*.vsix
 ```
 
 The extension launches the bundled `nebra lps` language server - you get hover, go-to-definition, completion, rename, find-references, semantic highlighting, code actions ("Implement interface", "Auto-import"), and signature help out of the box.
+
+---
+
+## Coming from Lux
+
+Nebra was called Lux until the name collided with [lumen-oss/lux](https://github.com/lumen-oss/lux),
+a Lua package manager that uses the same `lux.toml` and `lux.lock` file names. Existing projects
+convert with one command:
+
+```bash
+nebra migrate --dry-run   # report what would change, write nothing
+nebra migrate             # rename files and rewrite the matching tokens
+```
+
+It renames `*.lux` to `*.neb`, `lux.toml` to `nebra.toml`, `lux.lock` to `nebra.lock`, and rewrites
+a fixed set of tokens (`lux_modules`, `lux:test`, `LUX_*`, `__lux*`, CLI invocations in build
+scripts). Replacement is token-based rather than a blanket substitution, so your own identifiers and
+prose that merely contain the word survive untouched. A copy of the project is written to
+`.nebra-migrate-backup/` first.
+
+`lux_modules/` is deliberately left alone because its contents are fetched, not authored. Delete it
+and run `nebra install` afterwards.
 
 ---
 
@@ -346,8 +367,11 @@ The result is a single self-contained executable: your compiled Lua + KeraLua + 
 | `nebra remove <name>`      | Remove a declared dependency                             |
 | `nebra registry refresh`   | Refresh the cached alias registry                        |
 | `nebra lps`                | Start the LSP language server over stdio                 |
-| `nebra version`            | Print the Nebra version                                    |
+| `nebra migrate [dir]`      | Convert a project from the old `lux` toolchain to Nebra   |
+| `nebra version`            | Print the Nebra version                                  |
 | `nebra help`               | Show CLI help                                            |
+
+The installer also links `neb` as a shorthand, so `neb build` and `nebra build` are the same command.
 
 Detailed flags and behavior live in the [CLI reference](https://nebra-lang.github.io/docs/toolchain/cli).
 
@@ -406,8 +430,8 @@ See the [package manager guide](https://nebra-lang.github.io/docs/toolchain/pack
 │   └-- stdlib/         Built-in .d.neb declarations + test framework Lua
 ├-- runtime/           Embedded Lua 5.4 runtime (KeraLua wrapper, stdlib bindings)
 ├-- examples/          Example projects (nebra-strings, lua-math, zoo-app)
-├-- test/              Runtime test suite (164 tests, all passing)
-├-- vscode-nebra/        VS Code extension source
+├-- test/              Runtime test suite (181 tests, all passing)
+├-- vscode-nebra/      VS Code extension source
 └-- assets/            Logo & branding
 ```
 
@@ -464,6 +488,7 @@ The full language reference, guides and examples live at **[nebra-lang.github.io
 - [Examples](https://nebra-lang.github.io/docs/examples/overview) - complete, runnable programs
 
 The site is built from [nebra-lang/nebra-lang.github.io](https://github.com/nebra-lang/nebra-lang.github.io).
+
 ---
 
 ## Examples
@@ -500,6 +525,10 @@ Current status:
 - ✅ Standalone binary compiler (`nebra compile`)
 - ✅ Interactive REPL (`nebra repl`)
 - ✅ Language server (hover, go-to-def, completion, rename, references, code actions, sig help, semantic tokens)
+- ✅ Runtime reflection metadata + `reflect` library
+- ✅ `never` type with unreachable-code detection and flow narrowing
+- ✅ Named function fields in table constructors
+- ✅ `nebra migrate` for projects built with the old `lux` toolchain
 - ⏳ Formatter for consistent code style
 
 ---
@@ -508,7 +537,7 @@ Current status:
 
 Issues and pull requests are welcome at [github.com/nebra-lang/nebra](https://github.com/nebra-lang/nebra). Before opening a PR:
 
-1. Run the test suite - it must stay at 164/164.
+1. Run the test suite - it must stay green.
    ```bash
    cd test && nebra test
    ```
