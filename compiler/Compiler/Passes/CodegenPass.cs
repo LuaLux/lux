@@ -40,10 +40,6 @@ public sealed partial class CodegenPass() : Pass(PassName, PassScope.PerBuild, t
         _reflectNamespace = ReflectNamespace(ctx, pkg);
         EmitReflectionPrelude(ctx, gen);
 
-        // Forward-declare extension functions at the top so calls anywhere in the file resolve,
-        // regardless of where the `extend` block appears.
-        EmitExtensionForwardDecls(ctx, gen, file.Hir.Body);
-
         EmitStmtList(ctx, pkg, gen, file.Hir.Body);
 
         if (exportedNames.Count > 0)
@@ -2265,21 +2261,12 @@ public sealed partial class CodegenPass() : Pass(PassName, PassScope.PerBuild, t
            && ed.TargetType.ResolvedType != TypID.Invalid
            && ed.TargetType.ResolvedType != ctx.Types.PrimAny.ID;
 
-    private void EmitExtensionForwardDecls(PassContext ctx, LuaGenerator gen, List<Stmt> stmts)
-    {
-        var names = new List<string>();
-        foreach (var stmt in stmts)
-            if (stmt is ExtendDecl ed && IsExtendableTarget(ctx, ed))
-                foreach (var m in ed.Methods)
-                    names.Add(ExtensionFnName(ctx, ed.TargetType.ResolvedType, m.Name.Name));
-
-        if (names.Count == 0) return;
-        gen.Write("local ");
-        gen.Write(string.Join(", ", names));
-        gen.NewLine();
-        gen.WriteSemicolon();
-    }
-
+    /// <summary>
+    /// Emits an <c>extend</c> block's methods as plain functions under a generated
+    /// <c>__ext_&lt;Type&gt;_&lt;name&gt;</c> name. They are deliberately global: the type system
+    /// registers an extension across the whole build, so a call may be emitted in a file other
+    /// than the one declaring it, and a file-local function would not be reachable from there.
+    /// </summary>
     private void EmitExtendDecl(PassContext ctx, PackageContext pkg, LuaGenerator gen, ExtendDecl ed)
     {
         if (!IsExtendableTarget(ctx, ed)) return;

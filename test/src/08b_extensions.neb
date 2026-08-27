@@ -1,0 +1,12 @@
+--- Extension methods declared in their own module, so the suite covers a call emitted in a file
+--- other than the one that declares them.
+
+extend string
+    function exclaim(): string
+        return self .. "!"
+    end
+end
+
+export function extensionsLoaded(): boolean
+    return true
+end

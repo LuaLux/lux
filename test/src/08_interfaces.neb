@@ -1,5 +1,6 @@
 import { section, expectEq, expect } from "_runner"
 import { Sized } from "08a_interface_defs"
+import { extensionsLoaded } from "08b_extensions"
 
 interface Greetable
     function greet(): string
@@ -140,6 +141,8 @@ export function run(): nil
     expectEq("default param through interface receiver", c:label(), "cfg:widget")
 
     expectEq("extend block body runs under the immutability rule", (21):doubled(), 42)
+    expect("cross-file extension module loaded", extensionsLoaded())
+    expectEq("extension declared in another file", ("hi"):exclaim(), "hi!")
 
     local t = new Terse()
     expectEq("implementation adopts the interface default", t:label(), "cfg:terse")
