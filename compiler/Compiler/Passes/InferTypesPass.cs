@@ -2080,7 +2080,8 @@ public sealed class InferTypesPass() : Pass(PassName, PassScope.PerBuild)
     private TypID InferNewExpr(PassContext pc, NewExpr newExpr)
     {
         var classTypId = LookupSymbolType(pc, newExpr.ClassName.Sym);
-        foreach (var arg in newExpr.Arguments) SynthesizeExpr(pc, arg);
+        var argTypes = new List<TypID>();
+        foreach (var arg in newExpr.Arguments) argTypes.Add(SynthesizeExpr(pc, arg));
 
         if (classTypId == TypID.Invalid || !pc.Types.GetByID(classTypId, out var rawType) || rawType is not ClassType classType)
         {
@@ -2095,13 +2096,13 @@ public sealed class InferTypesPass() : Pass(PassName, PassScope.PerBuild)
             return classTypId;
         }
 
-        if (classType.ConstructorType != null)
+        var ctorType = ResolveConstructorType(classType);
+        if (ctorType != null)
         {
-            var ctorType = classType.ConstructorType;
             var argCount = newExpr.Arguments.Count;
             var paramCount = ctorType.ParamTypes.Count;
             var minParams = ctorType.MinParamCount;
-            if (argCount < minParams || argCount > paramCount)
+            if (argCount < minParams || (argCount > paramCount && !ctorType.IsVararg))
             {
                 var expected = minParams == paramCount
                     ? paramCount.ToString()
@@ -2109,9 +2110,28 @@ public sealed class InferTypesPass() : Pass(PassName, PassScope.PerBuild)
                 pc.Diag.Report(newExpr.Span, DiagnosticCode.ErrConstructorParamMismatch,
                     newExpr.ClassName.Name, expected, argCount.ToString());
             }
+            else
+            {
+                CheckCallArguments(pc, newExpr.Span, ctorType, argTypes);
+            }
         }
 
         return classTypId;
+    }
+
+    /// <summary>
+    /// Finds the constructor a <c>new</c> on <paramref name="classType"/> actually runs: its own,
+    /// or else the nearest one it inherits. A class that declares none is constructed through the
+    /// inherited one, so that is the signature the call site has to satisfy.
+    /// </summary>
+    private static FunctionType? ResolveConstructorType(ClassType classType)
+    {
+        for (var cur = classType; cur != null; cur = cur.BaseClass)
+        {
+            if (cur.ConstructorType != null) return cur.ConstructorType;
+        }
+
+        return null;
     }
 
     private TypID InferFunctionDef(PassContext pc, FunctionDefExpr fde)

@@ -96,6 +96,12 @@ class Vec
     end
 end
 
+class Heir extends Animal
+end
+
+class DeepHeir extends Heir
+end
+
 export function run(): nil
     section("classes")
 
@@ -137,6 +143,11 @@ export function run(): nil
     b:push(2)
     b:push(3)
     expectEq("getter returns size", b.size, 3)
+
+    -- Constructor inherited by a class that declares none
+    local h = new Heir("passed through")
+    expectEq("inherited constructor receives its argument", h.name, "passed through")
+    expectEq("inherited constructor through two levels", (new DeepHeir("deep")).name, "deep")
 
     -- Operator overloading
     local v1 = new Vec(1, 2)

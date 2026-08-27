@@ -317,6 +317,11 @@ public sealed partial class CodegenPass() : Pass(PassName, PassScope.PerBuild, t
         gen.WriteSemicolon();
     }
 
+    /// <summary>
+    /// Emits a class: its table, accessors, <c>new</c>, and its methods. A class that declares no
+    /// constructor of its own is constructed through the one it inherits, so its generated
+    /// <c>new</c> takes a variadic parameter list and forwards it to the base unchanged.
+    /// </summary>
     private void EmitClassDecl(PassContext ctx, PackageContext pkg, LuaGenerator gen, ClassDecl cd)
     {
         var className = ResolveName(ctx, pkg, cd.Name);
@@ -404,6 +409,10 @@ public sealed partial class CodegenPass() : Pass(PassName, PassScope.PerBuild, t
                 gen.Write(ResolveName(ctx, pkg, cd.Constructor.Parameters[i].Name));
             }
         }
+        else if (hasBase)
+        {
+            gen.Write("...");
+        }
         gen.Write(")");
         gen.NewLine();
         gen.Indent();
@@ -421,7 +430,7 @@ public sealed partial class CodegenPass() : Pass(PassName, PassScope.PerBuild, t
                 {
                     gen.Write("local self = ");
                     gen.Write(baseName!);
-                    gen.Write(".new()");
+                    gen.Write(cd.Constructor == null ? ".new(...)" : ".new()");
                     gen.NewLine();
                     gen.WriteSemicolon();
                     gen.Write("setmetatable(self, ");
