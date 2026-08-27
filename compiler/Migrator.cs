@@ -21,11 +21,16 @@ public static class Migrator
         "bin", "obj", BackupDirName
     ];
 
-    /// <summary>File types whose contents are rewritten. Everything else is only ever renamed.</summary>
+    /// <summary>
+    /// File types whose contents are rewritten. Everything else is only ever renamed. Build and
+    /// codegen scripts are included because they routinely emit or glob for <c>.lux</c> paths, and
+    /// leaving those behind would have the script recreate the old layout on its next run.
+    /// </summary>
     private static readonly string[] TextExtensions =
     [
         ".lux", ".neb", ".lua", ".toml", ".md", ".json", ".yml", ".yaml",
-        ".sh", ".fish", ".ps1", ".txt", ".gitignore"
+        ".sh", ".fish", ".ps1", ".bat", ".cmd", ".txt", ".gitignore",
+        ".js", ".mjs", ".cjs", ".ts", ".py"
     ];
 
     /// <summary>

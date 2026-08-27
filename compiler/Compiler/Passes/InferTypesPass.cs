@@ -595,6 +595,12 @@ public sealed class InferTypesPass() : Pass(PassName, PassScope.PerBuild)
         }
     }
 
+    /// <summary>
+    /// Resolves a class declaration: registers its members on the <see cref="ClassType"/> and
+    /// type-checks each body. A <c>declare class</c> carries signatures only, so its methods are
+    /// bodyless by construction and are exempt from body resolution and the all-paths-return
+    /// check, the same way <c>abstract</c> methods are.
+    /// </summary>
     private void ResolveClassDecl(PassContext pc, ClassDecl cd)
     {
         if (!_resolvedClassDecls.Add(cd.ID)) return;
@@ -733,12 +739,10 @@ public sealed class InferTypesPass() : Pass(PassName, PassScope.PerBuild)
                 pc.Diag.Report(method.Span, Diagnostics.DiagnosticCode.WarnMissingShadowOverride, method.Name.Name, classType.BaseClass.Name);
             }
 
-            if (!method.IsAbstract)
+            if (!method.IsAbstract && !cd.IsDeclare)
             {
                 ResolveStmts(pc, method.Body, method.ReturnStmt);
 
-                // Return-value type check (parity with free functions, which do this in
-                // ResolveFunctionLike) plus the missing-return / all-paths analysis.
                 var collected = CollectReturnTypes(pc, method.Body);
                 if (method.ReturnStmt != null)
                     collected.Add((ComputeReturnType(pc, method.ReturnStmt.Values), method.ReturnStmt.Span));
