@@ -1,11 +1,7 @@
 --- Interface kept in its own module so the suite covers the cross-file path: an implementing
 --- class in another file must still be checked against it and must inherit its parameter
---- defaults. The module also exports a value, so importing it stays a plain module load.
+--- defaults. The module exports nothing else, which also covers importing a type-only module.
 
 export interface Sized
     function resize(width: number, height: number = 10): string
-end
-
-export function sizedTag(): string
-    return "sized"
 end

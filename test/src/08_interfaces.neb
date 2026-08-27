@@ -1,5 +1,5 @@
 import { section, expectEq, expect } from "_runner"
-import { Sized, sizedTag } from "08a_interface_defs"
+import { Sized } from "08a_interface_defs"
 
 interface Greetable
     function greet(): string
@@ -126,7 +126,6 @@ export function run(): nil
 
     local s: Sized = b
     expectEq("cross-file default through interface receiver", s:resize(4, 2), "4x2")
-    expectEq("cross-file module value", sizedTag(), "sized")
 
     local ih = new InheritedGreeter()
     expectEq("interface satisfied by an inherited method", callGreet(ih), "inherited hello")

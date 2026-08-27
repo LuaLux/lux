@@ -1469,13 +1469,20 @@ public sealed partial class CodegenPass() : Pass(PassName, PassScope.PerBuild, t
             }
             case ImportKind.Named:
             {
+                var runtimeSpecs = import.Specifiers.Where(spec => !IsCompileTimeOnly(ctx, pkg, spec)).ToList();
+                if (runtimeSpecs.Count == 0)
+                {
+                    gen.WriteLine(modExpr);
+                    break;
+                }
+
                 var temp = gen.FreshTemp("_mod");
                 gen.Write("local ");
                 gen.Write(temp);
                 gen.Write(" = ");
                 gen.WriteLine(modExpr);
 
-                foreach (var spec in import.Specifiers)
+                foreach (var spec in runtimeSpecs)
                 {
                     var localName = spec.Alias != null
                         ? ResolveName(ctx, pkg, spec.Alias)
@@ -1491,6 +1498,21 @@ public sealed partial class CodegenPass() : Pass(PassName, PassScope.PerBuild, t
             }
         }
         gen.WriteSemicolon();
+    }
+
+    /// <summary>
+    /// Reports whether an imported name exists only at compile time. An interface has no runtime
+    /// representation, so binding it would read a field the exporting module never wrote, and in a
+    /// module that exports nothing else <c>require</c> returns <c>true</c> and the read fails
+    /// outright. The module is still loaded, so its side effects are unaffected.
+    /// </summary>
+    private static bool IsCompileTimeOnly(PassContext ctx, PackageContext pkg, ImportSpecifier spec)
+    {
+        if (spec.Name.Sym == SymID.Invalid) return false;
+        if (!pkg.Syms.GetByID(spec.Name.Sym, out var symbol)) return false;
+        if (symbol.Kind == SymbolKind.Interface) return true;
+
+        return ctx.Types.GetByID(symbol.Type, out var type) && type is InterfaceType;
     }
 
     #endregion
