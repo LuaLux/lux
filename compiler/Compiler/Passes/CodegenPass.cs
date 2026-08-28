@@ -365,6 +365,45 @@ public sealed partial class CodegenPass() : Pass(PassName, PassScope.PerBuild, t
         gen.WriteSemicolon();
     }
 
+    /// <summary>
+    /// Rewrites either spelling of unpack to the chunk-level alias, which resolves to whichever of
+    /// <c>table.unpack</c> and <c>unpack</c> the target provides.
+    /// </summary>
+    private bool TryEmitUnpack(PackageContext pkg, LuaGenerator gen, Expr expr)
+    {
+        if (!IsExternalUnpack(pkg, expr))
+        {
+            return false;
+        }
+
+        gen.Write(gen.GetUnpackHelper());
+        return true;
+    }
+
+    private static bool IsExternalUnpack(PackageContext pkg, Expr expr)
+    {
+        if (expr is NameExpr name)
+        {
+            return name.Name.Name == "unpack" && IsExternalSymbol(pkg, name.Name);
+        }
+
+        if (expr is DotAccessExpr { IsOptional: false } dot)
+        {
+            return dot.FieldName.Name == "unpack"
+                && dot.Object is NameExpr { Name.Name: "table" } owner
+                && IsExternalSymbol(pkg, owner.Name);
+        }
+
+        return false;
+    }
+
+    private static bool IsExternalSymbol(PackageContext pkg, NameRef name)
+    {
+        return name.Sym != SymID.Invalid
+            && pkg.Syms.GetByID(name.Sym, out var sym)
+            && sym.Flags.HasFlag(SymbolFlags.External);
+    }
+
     private void EmitClassDecl(PassContext ctx, PackageContext pkg, LuaGenerator gen, ClassDecl cd)
     {
         var className = ResolveName(ctx, pkg, cd.Name);
@@ -1616,7 +1655,10 @@ public sealed partial class CodegenPass() : Pass(PassName, PassScope.PerBuild, t
                 gen.Write("...");
                 break;
             case NameExpr name:
-                gen.Write(ResolveName(ctx, pkg, name.Name));
+                if (!TryEmitUnpack(pkg, gen, expr))
+                {
+                    gen.Write(ResolveName(ctx, pkg, name.Name));
+                }
                 break;
             case ParenExpr paren:
                 gen.Write("(");
@@ -1637,7 +1679,7 @@ public sealed partial class CodegenPass() : Pass(PassName, PassScope.PerBuild, t
                 {
                     EmitOptionalDotAccess(ctx, pkg, gen, dot);
                 }
-                else
+                else if (!TryEmitUnpack(pkg, gen, expr))
                 {
                     EmitExpr(ctx, pkg, gen, dot.Object);
                     gen.Write(".");

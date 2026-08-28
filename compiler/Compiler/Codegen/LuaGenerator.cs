@@ -453,6 +453,16 @@ public sealed class LuaGenerator(Config config)
             $"end");
     }
 
+    /// <summary>
+    /// Emits the alias both spellings of unpack are rewritten to. Lua 5.1 and LuaJIT provide only
+    /// the global <c>unpack</c>, Lua 5.2 and later only <c>table.unpack</c>. The alias is bound at
+    /// the top of the chunk, so it cannot be captured by a local the source declares later.
+    /// </summary>
+    public string GetUnpackHelper()
+    {
+        return RequireHelper("unpack", name => $"local {name} = table.unpack or unpack");
+    }
+
     public string GetInstanceOfHelper()
     {
         return RequireHelper("instanceof", name =>

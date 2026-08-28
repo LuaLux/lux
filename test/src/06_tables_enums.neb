@@ -104,4 +104,13 @@ export function run(): nil
     expect("is against an enum member", shade is Color)
     expect("is rejects a non-member", not (99 is Color))
 
+    -- Both spellings of unpack, normalised to whichever one the target provides
+    local packed: any = {4, 5, 6}
+    local x1, y1, z1 = table.unpack(packed)
+    expectEq("table.unpack first", x1, 4)
+    expectEq("table.unpack last", z1, 6)
+    local x2, y2, z2 = unpack(packed)
+    expectEq("bare unpack first", x2, 4)
+    expectEq("bare unpack last", z2, 6)
+
 end
