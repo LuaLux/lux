@@ -83,8 +83,7 @@ internal static class Program
     {
         if (config.TypesOnly)
         {
-            Console.WriteLine("Types-only project — nothing to compile.");
-            return 0;
+            return await CheckTypesOnlyProjectAsync(config);
         }
 
         var srcDir = Path.Combine(Environment.CurrentDirectory, config.Source);
@@ -139,6 +138,46 @@ internal static class Program
         if (runScripts && !RunScripts(config.Scripts.PostBuild, "post-build"))
             return 1;
 
+        return 0;
+    }
+
+    /// <summary>
+    /// Type-checks a types-only package. Such a package emits no Lua, but its declarations still
+    /// have to resolve: without this the errors stayed invisible until a consumer hit them, and a
+    /// package could publish declarations naming types that do not exist.
+    /// </summary>
+    private static async Task<int> CheckTypesOnlyProjectAsync(Config config)
+    {
+        var srcDir = Path.Combine(Environment.CurrentDirectory, config.Source);
+        if (!Directory.Exists(srcDir))
+        {
+            await Console.Error.WriteLineAsync($"Source directory '{config.Source}' not found.");
+            return 1;
+        }
+
+        var declarationFiles = Directory
+            .GetFiles(srcDir, "*.d.neb", SearchOption.AllDirectories)
+            .ToArray();
+
+        if (declarationFiles.Length == 0)
+        {
+            await Console.Error.WriteLineAsync($"No .d.neb files found in '{config.Source}'.");
+            return 1;
+        }
+
+        var compiler = new NebraCompiler { Config = config };
+        foreach (var file in declarationFiles)
+            compiler.AddSource(file);
+
+        if (!compiler.Compile())
+        {
+            foreach (var diag in compiler.Diagnostics.Diagnostics)
+                await Console.Error.WriteLineAsync(Nebra.Diagnostics.DiagnosticRenderer.Render(diag) + "\n");
+            await Console.Error.WriteLineAsync("Check FAILED.");
+            return 1;
+        }
+
+        Console.WriteLine($"Types-only project — {declarationFiles.Length} declaration file(s) checked.");
         return 0;
     }
 
