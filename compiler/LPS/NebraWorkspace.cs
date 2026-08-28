@@ -175,6 +175,19 @@ public sealed class NebraWorkspace
 
     public void AnalyzeDocument(string uri, string sourceText)
     {
+        var (analysed, diagnostics, path) = BuildAnalysis(uri, sourceText);
+        if (analysed != null) _results[uri] = analysed;
+        PublishDiagnostics(uri, path, diagnostics);
+    }
+
+    /// <summary>
+    /// Runs the analysis for a document without caching the result or publishing its diagnostics.
+    /// Used for files a request has to reach into (a workspace-wide rename, say) that the user has
+    /// never opened, so they do not gain diagnostics or evict an open document's cached result.
+    /// </summary>
+    private (AnalysisResult? Result, DiagnosticsBag Diagnostics, string FilePath) BuildAnalysis(
+        string uri, string sourceText)
+    {
         var filePath = DocumentUri.GetFileSystemPath(DocumentUri.Parse(uri)) ?? uri;
         var fileDir = Path.GetDirectoryName(Path.GetFullPath(filePath));
 
@@ -207,14 +220,12 @@ public sealed class NebraWorkspace
         }
         catch
         {
-            PublishDiagnostics(uri, filePath, diag);
-            return;
+            return (null, diag, filePath);
         }
 
         if (hir == null)
         {
-            PublishDiagnostics(uri, filePath, diag);
-            return;
+            return (null, diag, filePath);
         }
 
         var scopes = new ScopeGraph(diag, scopeAlloc);
@@ -268,8 +279,7 @@ public sealed class NebraWorkspace
             ImportedDeclarations = importedDecls
         };
 
-        _results[uri] = result;
-        PublishDiagnostics(uri, filePath, diag);
+        return (result, diag, filePath);
     }
 
     private (List<PreparsedFile> Files, Dictionary<SymID, ImportedDecl> Decls) PostResolveImports(
@@ -1595,6 +1605,50 @@ public sealed class NebraWorkspace
     /// a top-level symbol with the given name and returns each as a tuple of
     /// (absolute path, module specifier suitable for <c>import { X } from "..."</c>).
     /// </summary>
+    /// <summary>
+    /// Analyses every project file whose text mentions <paramref name="symbolName"/> and returns the
+    /// results, reusing the cached analysis for documents that are already open. Files that do not
+    /// mention the name are skipped without parsing, which keeps a workspace-wide request from
+    /// paying for the whole project.
+    /// </summary>
+    public List<AnalysisResult> AnalyzeFilesMentioning(string symbolName)
+    {
+        var results = new List<AnalysisResult>();
+        var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+        foreach (var cached in _results.Values)
+        {
+            if (!string.IsNullOrEmpty(cached.FilePath)) seen.Add(Path.GetFullPath(cached.FilePath));
+            results.Add(cached);
+        }
+
+        if (_rootPath == null || !Directory.Exists(_rootPath)) return results;
+
+        IEnumerable<string> files;
+        try { files = Directory.EnumerateFiles(_rootPath, "*.neb", SearchOption.AllDirectories); }
+        catch { return results; }
+
+        foreach (var file in files)
+        {
+            var fullPath = Path.GetFullPath(file);
+            if (seen.Contains(fullPath)) continue;
+            if (fullPath.Contains(Path.DirectorySeparatorChar + "nebra_modules" + Path.DirectorySeparatorChar)) continue;
+            if (fullPath.Contains(Path.DirectorySeparatorChar + "out" + Path.DirectorySeparatorChar)) continue;
+
+            string source;
+            try { source = File.ReadAllText(fullPath); }
+            catch { continue; }
+
+            if (!source.Contains(symbolName, StringComparison.Ordinal)) continue;
+
+            var uri = DocumentUri.FromFileSystemPath(fullPath).ToString();
+            var (analysed, _, _) = BuildAnalysis(uri, source);
+            if (analysed != null) results.Add(analysed);
+        }
+
+        return results;
+    }
+
     public List<(string AbsPath, string ModulePath)> FindExportingFiles(string symbolName, string requesterFilePath)
     {
         var matches = new List<(string AbsPath, string ModulePath)>();
