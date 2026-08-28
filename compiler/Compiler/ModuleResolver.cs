@@ -29,13 +29,26 @@ public sealed class ModuleResolver(Config config)
     public ResolvedModule? Resolve(string moduleName, string? importerPath,
         List<PackageContext> pkgs, DiagnosticsBag diag, IDAlloc<NodeID> nodeAlloc)
     {
-        if (_cache.TryGetValue(moduleName, out var cached))
+        // A bare module name resolves relative to the importing file first, so the
+        // same name means different modules in different directories: a dependency's
+        // internal `import { X } from "types"` must not be served the consumer's own
+        // `src/types.neb`. Keying the cache on the importer's directory keeps each
+        // module's neighbourhood to itself.
+        var cacheKey = ImporterDirectory(importerPath) + "\0" + moduleName;
+        if (_cache.TryGetValue(cacheKey, out var cached))
             return cached;
 
         var result = DoResolve(moduleName, importerPath, pkgs, diag, nodeAlloc);
         if (result != null)
-            _cache[moduleName] = result;
+            _cache[cacheKey] = result;
         return result;
+    }
+
+    private static string ImporterDirectory(string? importerPath)
+    {
+        if (string.IsNullOrEmpty(importerPath)) return "";
+        try { return Path.GetDirectoryName(Path.GetFullPath(importerPath)) ?? ""; }
+        catch { return ""; }
     }
 
     private ResolvedModule? DoResolve(string moduleName, string? importerPath,

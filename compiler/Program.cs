@@ -1568,7 +1568,7 @@ internal static class Program
         // own output under its own configuration, and that is the code its callers expect.
         if (Directory.Exists(modulesDir))
         {
-            foreach (var luaPath in Directory.EnumerateFiles(modulesDir, "*.lua", SearchOption.AllDirectories))
+            foreach (var luaPath in Directory.GetDirectories(modulesDir).SelectMany(pkgDir => InstalledPackages.EnumerateFilesSafely(pkgDir, "*.lua")))
             {
                 var moduleName = ModuleNameFor(luaPath, normalizedSrc, modulesDir);
                 if (moduleName == null) continue;
@@ -1653,7 +1653,7 @@ internal static class Program
         var hits = new List<string>();
         var dir = Path.Combine(Environment.CurrentDirectory, "nebra_modules");
         if (!Directory.Exists(dir)) return hits;
-        foreach (var p in Directory.EnumerateFiles(dir, "*.*", SearchOption.AllDirectories))
+        foreach (var p in Directory.GetDirectories(dir).SelectMany(pkgDir => InstalledPackages.EnumerateFilesSafely(pkgDir, "*.*")))
         {
             var ext = Path.GetExtension(p).ToLowerInvariant();
             if (ext is ".so" or ".dll" or ".dylib") hits.Add(p);

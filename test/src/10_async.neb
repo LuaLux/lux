@@ -22,6 +22,42 @@ async function returnsNumber(n: number): number
     return tonumber(v)!
 end
 
+class Fetcher
+    prefix: string
+
+    constructor(prefix: string)
+        self.prefix = prefix
+    end
+
+    async function fetch(value: string): string
+        local v = await instant(self.prefix .. value)
+        return v
+    end
+
+    async function fetchTwice(value: string): string
+        local a = await self:fetch(value)
+        local b = await self:fetch(value)
+        return a .. b
+    end
+
+    static async function ping(): string
+        local v = await instant("pong")
+        return v
+    end
+end
+
+extend string
+    async function fetchUpper(): string
+        local v = await instant(string.upper(self))
+        return v
+    end
+end
+
+async function viaAny(box: any): string
+    local value = await box:fetch("dyn")
+    return value
+end
+
 export function run(): nil
     section("async / await")
 
@@ -37,4 +73,25 @@ export function run(): nil
     local mut got3: number = 0
     returnsNumber(7, function(r: number): nil got3 = r end)
     expectEq("async returns number through await", got3, 7)
+
+    local fetcher = new Fetcher("x-")
+    local mut got4: string = ""
+    fetcher:fetch("a", function(r: string): nil got4 = r end)
+    expectEq("async instance method", got4, "x-a")
+
+    local mut got5: string = ""
+    fetcher:fetchTwice("b", function(r: string): nil got5 = r end)
+    expectEq("await on a method call", got5, "x-bx-b")
+
+    local mut got6: string = ""
+    Fetcher.ping(function(r: string): nil got6 = r end)
+    expectEq("async static method", got6, "pong")
+
+    local mut got7: string = ""
+    ("hi"):fetchUpper(function(r: string): nil got7 = r end)
+    expectEq("async extension method", got7, "HI")
+
+    local mut got8: string = ""
+    viaAny(fetcher, function(r: string): nil got8 = r end)
+    expectEq("await through an any-typed receiver", got8, "x-dyn")
 end

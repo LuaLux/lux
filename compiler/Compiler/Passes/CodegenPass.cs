@@ -1,4 +1,4 @@
-using Nebra.Compiler.Codegen;
+﻿using Nebra.Compiler.Codegen;
 using Nebra.Diagnostics;
 using Nebra.IR;
 
@@ -585,6 +585,7 @@ public sealed partial class CodegenPass() : Pass(PassName, PassScope.PerBuild, t
             gen.Write(method.Name.Name);
             gen.Write("(");
             EmitParamList(ctx, pkg, gen, method.Parameters);
+            EmitAsyncDoneParam(gen, method.IsAsync, method.Parameters.Count > 0);
             gen.Write(")");
             gen.NewLine();
             gen.Indent();
@@ -618,6 +619,7 @@ public sealed partial class CodegenPass() : Pass(PassName, PassScope.PerBuild, t
                 gen.Write(mName);
                 gen.Write("(");
                 EmitParamList(ctx, pkg, gen, node.Parameters);
+                EmitAsyncDoneParam(gen, node.IsAsync, node.Parameters.Count > 0);
                 gen.Write(")");
                 gen.NewLine();
                 gen.Indent();
@@ -639,6 +641,7 @@ public sealed partial class CodegenPass() : Pass(PassName, PassScope.PerBuild, t
             gen.Write(method.Name.Name);
             gen.Write("(");
             EmitParamList(ctx, pkg, gen, method.Parameters);
+            EmitAsyncDoneParam(gen, method.IsAsync, method.Parameters.Count > 0);
             gen.Write(")");
             gen.NewLine();
             gen.Indent();
@@ -879,6 +882,7 @@ public sealed partial class CodegenPass() : Pass(PassName, PassScope.PerBuild, t
         gen.Write(method.Name.Name);
         gen.Write("(");
         EmitParamList(ctx, pkg, gen, method.Parameters);
+        EmitAsyncDoneParam(gen, method.IsAsync, method.Parameters.Count > 0);
         gen.Write(")");
         gen.NewLine();
         gen.Indent();
@@ -2407,6 +2411,7 @@ public sealed partial class CodegenPass() : Pass(PassName, PassScope.PerBuild, t
                 gen.Write(", ");
                 EmitParamList(ctx, pkg, gen, m.Parameters);
             }
+            EmitAsyncDoneParam(gen, m.IsAsync, true);
             gen.Write(")");
             gen.NewLine();
             gen.Indent();
@@ -2508,6 +2513,13 @@ public sealed partial class CodegenPass() : Pass(PassName, PassScope.PerBuild, t
             gen.WriteLine(" end");
             gen.WriteSemicolon();
         }
+    }
+
+    private static void EmitAsyncDoneParam(LuaGenerator gen, bool isAsync, bool hasPrecedingParams)
+    {
+        if (!isAsync) return;
+        if (hasPrecedingParams) gen.Write(", ");
+        gen.Write("__done");
     }
 
     private void EmitFuncBodyContent(PassContext ctx, PackageContext pkg, LuaGenerator gen, List<Parameter> parameters, List<Stmt> body, ReturnStmt? returnStmt, bool isAsync)

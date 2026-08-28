@@ -50,7 +50,7 @@ public sealed class ResolveLibsPass() : Pass(PassName, PassScope.PerBuild)
             if (!Directory.Exists(pkg.RootPath)) continue;
 
             var outputRoot = pkg.OutputRoot;
-            foreach (var file in Directory.EnumerateFiles(pkg.RootPath, "*.d.neb", SearchOption.AllDirectories))
+            foreach (var file in InstalledPackages.EnumerateFilesSafely(pkg.RootPath, "*.d.neb"))
             {
                 if (IsUnder(file, outputRoot)) continue;
                 LoadDeclFile(context, file);

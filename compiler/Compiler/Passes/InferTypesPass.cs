@@ -1,4 +1,4 @@
-using Nebra.Configuration;
+﻿using Nebra.Configuration;
 using Nebra.Diagnostics;
 using Nebra.IR;
 using Type = Nebra.IR.Type;
@@ -90,7 +90,13 @@ public sealed class InferTypesPass() : Pass(PassName, PassScope.PerBuild)
     /// </summary>
     public override bool Run(PassContext context)
     {
-        foreach (var pkg in context.Pkgs)
+        // Filling a class's members is what makes it usable from another module, and the loops
+        // below do it one package at a time. Walking them in discovery order - filesystem order
+        // for the project, import order for a dependency's modules - would type-check a user of
+        // a class before the class itself was populated, so every stage runs in import order.
+        var ordered = TopoSortPackages(context);
+
+        foreach (var pkg in ordered)
         {
             foreach (var file in pkg.Files)
             {
@@ -98,11 +104,11 @@ public sealed class InferTypesPass() : Pass(PassName, PassScope.PerBuild)
             }
         }
 
-        foreach (var pkg in context.Pkgs)
+        foreach (var pkg in ordered)
             foreach (var file in pkg.Files)
                 ResolveImportsPass.PropagateImportTypes(context, pkg, file);
 
-        foreach (var pkg in context.Pkgs)
+        foreach (var pkg in ordered)
         {
             foreach (var file in pkg.Files)
             {
@@ -112,7 +118,7 @@ public sealed class InferTypesPass() : Pass(PassName, PassScope.PerBuild)
             }
         }
 
-        foreach (var pkg in context.Pkgs)
+        foreach (var pkg in ordered)
         {
             foreach (var file in pkg.Files)
             {
@@ -122,7 +128,6 @@ public sealed class InferTypesPass() : Pass(PassName, PassScope.PerBuild)
             }
         }
 
-        var ordered = TopoSortPackages(context);
         foreach (var pkg in ordered)
         {
             // Every extension in the package is registered before any body is resolved, so a call
@@ -2323,27 +2328,36 @@ public sealed class InferTypesPass() : Pass(PassName, PassScope.PerBuild)
 
         FunctionType? fnType = null;
         List<TypID> argTypes;
+        var untypedTarget = false;
 
         if (inner is FunctionCallExpr fc)
         {
             var calleeTyp = SynthesizeExpr(pc, fc.Callee);
             argTypes = fc.Arguments.Select(a => SynthesizeExpr(pc, a)).ToList();
             calleeTyp = StripNil(pc, calleeTyp);
-            if (pc.Pkg!.Types.GetByID(calleeTyp, out var t) && t is FunctionType ft)
-                fnType = ft;
+            if (pc.Pkg!.Types.GetByID(calleeTyp, out var t))
+            {
+                if (t is FunctionType ft) fnType = ft;
+                else untypedTarget = t.Kind == TypeKind.PrimitiveAny;
+            }
         }
         else
         {
             var mc = (MethodCallExpr)inner;
-            SynthesizeExpr(pc, mc.Object);
+            var recvTyp = StripNil(pc, SynthesizeExpr(pc, mc.Object));
             argTypes = mc.Arguments.Select(a => SynthesizeExpr(pc, a)).ToList();
-            var methodType = InferMethodCall(pc, mc);
-            if (pc.Pkg!.Types.GetByID(methodType, out var t) && t is FunctionType ft)
-                fnType = ft;
+            InferMethodCall(pc, mc);
+            if (pc.Pkg!.Types.GetByID(recvTyp, out var recvType))
+            {
+                fnType = ResolveMethodOnType(pc, recvType, mc.MethodName.Name)
+                         ?? ResolveExtensionMethod(pc, recvType, mc.MethodName.Name).Item1;
+                untypedTarget = recvType.Kind == TypeKind.PrimitiveAny;
+            }
         }
 
         if (fnType == null)
         {
+            if (untypedTarget) return pc.Types.PrimAny.ID;
             pc.Diag.Report(awaitExpr.Span, DiagnosticCode.ErrAwaitNonCallable);
             return pc.Types.PrimAny.ID;
         }

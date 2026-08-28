@@ -18,22 +18,103 @@ public sealed class ResolveImportsPass() : Pass(PassName, PassScope.PerBuild)
         foreach (var pkg in context.Pkgs)
             foreach (var f in pkg.Files) preexisting.Add(f);
 
-        foreach (var pkg in context.Pkgs)
+        // Resolving an import injects the imported file into the package, and that
+        // file has imports of its own - a dependency's modules import each other.
+        // Walking a single snapshot would leave those unresolved, so keep going
+        // until a round finds nothing new to process.
+        var processed = new HashSet<PreparsedFile>();
+        bool progressed;
+        do
         {
-            var filesSnapshot = pkg.Files.ToList();
-            foreach (var file in filesSnapshot)
+            progressed = false;
+            foreach (var pkg in context.Pkgs)
             {
-                ProcessFileImports(context, pkg, file, newFiles);
+                foreach (var file in pkg.Files.ToList())
+                {
+                    if (!processed.Add(file)) continue;
+                    ProcessFileImports(context, pkg, file, newFiles);
+                    progressed = true;
+                }
             }
-        }
+        } while (progressed);
 
         var freshlyInjected = newFiles.Where(f => !preexisting.Contains(f)).ToList();
         if (freshlyInjected.Count > 0)
             BindAndResolveNewFiles(context, freshlyInjected);
 
         ReportImportCycles(context);
+        SortFilesByImportOrder(context);
 
         return true;
+    }
+
+    /// <summary>
+    /// Reorders each package's files so that a file always follows the ones it imports.
+    /// </summary>
+    /// <remarks>
+    /// Every pass after this one walks the files in order and resolves each in turn, so a class
+    /// used across a module boundary is only complete once its defining file has been through
+    /// them. Discovery order does not respect that: the project scan is filesystem order, and a
+    /// dependency's modules are appended as imports pull them in. Sorting here makes the result
+    /// independent of both. <see cref="ReportImportCycles"/> has already rejected cycles, so a
+    /// topological order exists; files that import nothing keep their original relative order.
+    /// </remarks>
+    private static void SortFilesByImportOrder(PassContext context)
+    {
+        foreach (var pkg in context.Pkgs)
+        {
+            var byPath = new Dictionary<string, PreparsedFile>(StringComparer.OrdinalIgnoreCase);
+            foreach (var file in pkg.Files)
+            {
+                if (file.Filename == null) continue;
+                byPath.TryAdd(Path.GetFullPath(file.Filename), file);
+            }
+
+            var ordered = new List<PreparsedFile>(pkg.Files.Count);
+            var state = new Dictionary<PreparsedFile, int>();
+
+            foreach (var file in pkg.Files.ToList())
+                VisitForOrder(context, pkg, file, byPath, state, ordered);
+
+            var placed = new HashSet<PreparsedFile>(ordered);
+            foreach (var file in pkg.Files)
+                if (placed.Add(file)) ordered.Add(file);
+
+            pkg.Files.Clear();
+            pkg.Files.AddRange(ordered);
+        }
+    }
+
+    private static void VisitForOrder(PassContext context, PackageContext pkg, PreparsedFile file,
+        Dictionary<string, PreparsedFile> byPath, Dictionary<PreparsedFile, int> state,
+        List<PreparsedFile> ordered)
+    {
+        if (state.TryGetValue(file, out var mark))
+        {
+            // 1 means "on the current path": a cycle, already reported. Stop rather than recurse.
+            return;
+        }
+
+        state[file] = 1;
+
+        if (file.Filename != null)
+        {
+            foreach (var stmt in file.Hir.Body)
+            {
+                if (stmt is not ImportStmt import) continue;
+
+                var key = $"import_resolved:{file.Filename}:{import.Module.Name}";
+                if (!context.Cache.TryGetValue(key, out var obj) || obj is not ResolvedModule resolved) continue;
+                if (resolved.FilePath == null) continue;
+                if (!byPath.TryGetValue(Path.GetFullPath(resolved.FilePath), out var target)) continue;
+                if (ReferenceEquals(target, file)) continue;
+
+                VisitForOrder(context, pkg, target, byPath, state, ordered);
+            }
+        }
+
+        state[file] = 2;
+        ordered.Add(file);
     }
 
     /// <summary>

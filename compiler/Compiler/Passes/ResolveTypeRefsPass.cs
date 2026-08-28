@@ -36,9 +36,12 @@ public class ResolveTypeRefsPass() : Pass(PassName, PassScope.PerBuild)
         foreach (var pkg in context.Pkgs)
         {
             _pkg = pkg;
-            _currentScope = pkg.Root;
             foreach (var f in pkg.Files)
             {
+                // A file pulled in from another module is bound into a scope of its own under the
+                // package root, so its top-level declarations - and the imported names they refer
+                // to - are not visible from the root itself.
+                _currentScope = f.BindingScopeOverride ?? pkg.Root;
                 ResolveStmtListTypes(pkg.Types, f.Hir.Body);
 
                 if (f.Hir.Return != null)

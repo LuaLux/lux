@@ -1,4 +1,4 @@
-using Nebra.Compiler.Annotations;
+﻿using Nebra.Compiler.Annotations;
 using Nebra.Configuration;
 using Nebra.Diagnostics;
 using Nebra.IR;
@@ -48,7 +48,7 @@ public sealed class ResolveAnnotationsPass() : Pass(PassName, PassScope.PerBuild
             foreach (var root in roots)
             {
                 if (!Directory.Exists(root)) continue;
-                foreach (var file in Directory.EnumerateFiles(root, "*.neb", SearchOption.AllDirectories))
+                foreach (var file in InstalledPackages.EnumerateFilesSafely(root, "*.neb"))
                 {
                     if (file.EndsWith(".d.neb", StringComparison.OrdinalIgnoreCase)) continue;
                     if (!LooksLikeAnnotationFile(file)) continue;
