@@ -877,6 +877,19 @@ public interface INebraVisitor<Result> : IParseTreeVisitor<Result> {
 	/// <return>The visitor result.</return>
 	Result VisitModuleDeclareInterface([NotNull] NebraParser.ModuleDeclareInterfaceContext context);
 	/// <summary>
+	/// Visit a parse tree produced by the <c>ModuleDeclareExtend</c>
+	/// labeled alternative in <see cref="NebraParser.declareModuleMember"/>.
+	/// </summary>
+	/// <param name="context">The parse tree.</param>
+	/// <return>The visitor result.</return>
+	Result VisitModuleDeclareExtend([NotNull] NebraParser.ModuleDeclareExtendContext context);
+	/// <summary>
+	/// Visit a parse tree produced by <see cref="NebraParser.declareExtendMethod"/>.
+	/// </summary>
+	/// <param name="context">The parse tree.</param>
+	/// <return>The visitor result.</return>
+	Result VisitDeclareExtendMethod([NotNull] NebraParser.DeclareExtendMethodContext context);
+	/// <summary>
 	/// Visit a parse tree produced by <see cref="NebraParser.funcName"/>.
 	/// </summary>
 	/// <param name="context">The parse tree.</param>

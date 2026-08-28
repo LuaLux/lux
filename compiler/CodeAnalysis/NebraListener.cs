@@ -1469,6 +1469,28 @@ public interface INebraListener : IParseTreeListener {
 	/// <param name="context">The parse tree.</param>
 	void ExitModuleDeclareInterface([NotNull] NebraParser.ModuleDeclareInterfaceContext context);
 	/// <summary>
+	/// Enter a parse tree produced by the <c>ModuleDeclareExtend</c>
+	/// labeled alternative in <see cref="NebraParser.declareModuleMember"/>.
+	/// </summary>
+	/// <param name="context">The parse tree.</param>
+	void EnterModuleDeclareExtend([NotNull] NebraParser.ModuleDeclareExtendContext context);
+	/// <summary>
+	/// Exit a parse tree produced by the <c>ModuleDeclareExtend</c>
+	/// labeled alternative in <see cref="NebraParser.declareModuleMember"/>.
+	/// </summary>
+	/// <param name="context">The parse tree.</param>
+	void ExitModuleDeclareExtend([NotNull] NebraParser.ModuleDeclareExtendContext context);
+	/// <summary>
+	/// Enter a parse tree produced by <see cref="NebraParser.declareExtendMethod"/>.
+	/// </summary>
+	/// <param name="context">The parse tree.</param>
+	void EnterDeclareExtendMethod([NotNull] NebraParser.DeclareExtendMethodContext context);
+	/// <summary>
+	/// Exit a parse tree produced by <see cref="NebraParser.declareExtendMethod"/>.
+	/// </summary>
+	/// <param name="context">The parse tree.</param>
+	void ExitDeclareExtendMethod([NotNull] NebraParser.DeclareExtendMethodContext context);
+	/// <summary>
 	/// Enter a parse tree produced by <see cref="NebraParser.funcName"/>.
 	/// </summary>
 	/// <param name="context">The parse tree.</param>

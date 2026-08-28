@@ -687,6 +687,29 @@ internal partial class IRVisitor
         };
     }
 
+    public override Node VisitModuleDeclareExtend(NebraParser.ModuleDeclareExtendContext context)
+    {
+        var target = context.typeExpr() != null ? (TypeRef)Visit(context.typeExpr()) : null!;
+        var methods = new List<ExtensionMethodNode>();
+        foreach (var m in context.declareExtendMethod())
+        {
+            var isAsync = m.ASYNC() != null;
+            var methodName = NameRefFromTerm(m.NAME());
+            var (parameters, returnType) = VisitFuncSignatureContent(m.funcSignature());
+            var node = new ExtensionMethodNode(methodName, parameters, returnType, [], null, isAsync, SpanFromCtx(m))
+            {
+                TypeParams = VisitTypeParamListContent(m.funcSignature().typeParamList()),
+                Annotations = VisitAnnotationListContent(m.annotationList())
+            };
+            methods.Add(node);
+        }
+
+        return new ExtendDecl(NewNodeID, SpanFromCtx(context), target, methods, true)
+        {
+            Annotations = VisitAnnotationListContent(context.annotationList())
+        };
+    }
+
     public override Node VisitInterfaceDecl(NebraParser.InterfaceDeclContext context)
     {
         var name = NameRefFromTerm(context.NAME());

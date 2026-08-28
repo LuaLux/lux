@@ -1726,6 +1726,32 @@ public partial class NebraBaseListener : INebraListener {
 	/// <param name="context">The parse tree.</param>
 	public virtual void ExitModuleDeclareInterface([NotNull] NebraParser.ModuleDeclareInterfaceContext context) { }
 	/// <summary>
+	/// Enter a parse tree produced by the <c>ModuleDeclareExtend</c>
+	/// labeled alternative in <see cref="NebraParser.declareModuleMember"/>.
+	/// <para>The default implementation does nothing.</para>
+	/// </summary>
+	/// <param name="context">The parse tree.</param>
+	public virtual void EnterModuleDeclareExtend([NotNull] NebraParser.ModuleDeclareExtendContext context) { }
+	/// <summary>
+	/// Exit a parse tree produced by the <c>ModuleDeclareExtend</c>
+	/// labeled alternative in <see cref="NebraParser.declareModuleMember"/>.
+	/// <para>The default implementation does nothing.</para>
+	/// </summary>
+	/// <param name="context">The parse tree.</param>
+	public virtual void ExitModuleDeclareExtend([NotNull] NebraParser.ModuleDeclareExtendContext context) { }
+	/// <summary>
+	/// Enter a parse tree produced by <see cref="NebraParser.declareExtendMethod"/>.
+	/// <para>The default implementation does nothing.</para>
+	/// </summary>
+	/// <param name="context">The parse tree.</param>
+	public virtual void EnterDeclareExtendMethod([NotNull] NebraParser.DeclareExtendMethodContext context) { }
+	/// <summary>
+	/// Exit a parse tree produced by <see cref="NebraParser.declareExtendMethod"/>.
+	/// <para>The default implementation does nothing.</para>
+	/// </summary>
+	/// <param name="context">The parse tree.</param>
+	public virtual void ExitDeclareExtendMethod([NotNull] NebraParser.DeclareExtendMethodContext context) { }
+	/// <summary>
 	/// Enter a parse tree produced by <see cref="NebraParser.funcName"/>.
 	/// <para>The default implementation does nothing.</para>
 	/// </summary>

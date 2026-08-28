@@ -492,6 +492,12 @@ declareModuleMember
     | annotationList INTERFACE NAME typeParamList? (EXTENDS classRef (COMMA classRef)*)?
       interfaceMember*
       END                                                        # ModuleDeclareInterface
+    | annotationList EXTEND typeExpr declareExtendMethod* END     # ModuleDeclareExtend
+    ;
+
+// An extension block in a declaration file: method signatures without bodies.
+declareExtendMethod
+    : annotationList ASYNC? FUNCTION NAME funcSignature
     ;
 
 // -----------------------------------------------------------------------------

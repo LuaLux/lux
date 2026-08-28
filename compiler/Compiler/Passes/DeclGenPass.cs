@@ -32,11 +32,12 @@ public sealed class DeclGenPass() : Pass(PassName, PassScope.PerBuild, true)
                     continue;
 
                 var exports = CollectExports(file);
-                if (exports.Count == 0) continue;
+                var extensions = CollectExtensions(file);
+                if (exports.Count == 0 && extensions.Count == 0) continue;
 
                 var modulePath = DeriveModulePath(file, sourceRoot);
                 if (hasContent) sb.AppendLine();
-                EmitModuleDeclaration(sb, context, pkg, modulePath, exports);
+                EmitModuleDeclaration(sb, context, pkg, modulePath, exports, extensions);
                 hasContent = true;
             }
         }
@@ -105,8 +106,18 @@ public sealed class DeclGenPass() : Pass(PassName, PassScope.PerBuild, true)
         return exports;
     }
 
+    /// <summary>
+    /// Collects the <c>extend</c> blocks declared at the top level of <paramref name="file"/>.
+    /// Extensions are not exported by name - they register against the type they extend - so they
+    /// are gathered separately from the export list.
+    /// </summary>
+    private static List<ExtendDecl> CollectExtensions(PreparsedFile file)
+    {
+        return file.Hir.Body.OfType<ExtendDecl>().Where(ed => !ed.IsDeclare).ToList();
+    }
+
     private void EmitModuleDeclaration(StringBuilder sb, PassContext ctx, PackageContext pkg,
-        string modulePath, List<ExportedSymbol> exports)
+        string modulePath, List<ExportedSymbol> exports, List<ExtendDecl> extensions)
     {
         sb.AppendLine($"declare module \"{modulePath}\"");
 
@@ -136,7 +147,35 @@ public sealed class DeclGenPass() : Pass(PassName, PassScope.PerBuild, true)
             }
         }
 
+        foreach (var extension in extensions)
+        {
+            EmitExtendDeclaration(sb, ctx, pkg, extension);
+        }
+
         sb.AppendLine("end");
+    }
+
+    /// <summary>
+    /// Writes an <c>extend</c> block carrying method signatures only, which is the form a
+    /// declaration file accepts.
+    /// </summary>
+    private void EmitExtendDeclaration(StringBuilder sb, PassContext ctx, PackageContext pkg, ExtendDecl ed)
+    {
+        if (ed.TargetType == null) return;
+        if (!ctx.Types.GetByID(ed.TargetType.ResolvedType, out var target)) return;
+
+        sb.AppendLine($"    extend {FormatType(ctx, target)}");
+        foreach (var method in ed.Methods)
+        {
+            sb.Append("        ");
+            if (method.IsAsync) sb.Append("async ");
+            sb.Append($"function {method.Name.Name}(");
+            EmitParams(sb, ctx, pkg, method.Parameters);
+            sb.Append(')');
+            EmitReturnType(sb, ctx, pkg, method.ReturnType);
+            sb.AppendLine();
+        }
+        sb.AppendLine("    end");
     }
 
     /// <summary>

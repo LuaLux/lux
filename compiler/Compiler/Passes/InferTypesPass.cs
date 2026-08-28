@@ -125,14 +125,19 @@ public sealed class InferTypesPass() : Pass(PassName, PassScope.PerBuild)
         var ordered = TopoSortPackages(context);
         foreach (var pkg in ordered)
         {
+            // Every extension in the package is registered before any body is resolved, so a call
+            // may precede the `extend` block that declares it no matter which file each lives in.
+            foreach (var file in pkg.Files)
+            {
+                var registerCtx = MakeFileContext(context, pkg, file);
+                foreach (var ed in CollectExtendDecls(file.Hir.Body))
+                    RegisterExtensionSignatures(registerCtx, ed);
+            }
+
             foreach (var file in pkg.Files)
             {
                 var fileCtx = MakeFileContext(context, pkg, file);
                 _narrowed.Clear();
-                // Register extension-method signatures before resolving bodies so a call may
-                // precede the `extend` block that declares it (as with imported extensions).
-                foreach (var stmt in file.Hir.Body)
-                    if (stmt is ExtendDecl ed) RegisterExtensionSignatures(fileCtx, ed);
                 ResolveStmts(fileCtx, file.Hir.Body, file.Hir.Return);
             }
 
@@ -355,6 +360,7 @@ public sealed class InferTypesPass() : Pass(PassName, PassScope.PerBuild)
                             case InterfaceDecl mid: ResolveInterfaceDecl(pc, mid); break;
                             case DeclareVariableDecl mdvd: ResolveDecl(pc, mdvd); break;
                             case DeclareFunctionDecl mdfd: ResolveDecl(pc, mdfd); break;
+                            case ExtendDecl med: ResolveExtendDecl(pc, med); break;
                         }
                     }
                     break;
@@ -1537,7 +1543,28 @@ public sealed class InferTypesPass() : Pass(PassName, PassScope.PerBuild)
         }
     }
 
-    /// <summary>Type-checks extension bodies with <c>self</c> bound to the extended type.</summary>
+    /// <summary>
+    /// Yields every <c>extend</c> block reachable from <paramref name="body"/>, including the ones
+    /// nested inside a <c>declare module</c> as written in a generated declaration file.
+    /// </summary>
+    private static IEnumerable<ExtendDecl> CollectExtendDecls(List<Stmt> body)
+    {
+        foreach (var stmt in body)
+        {
+            if (stmt is ExtendDecl ed)
+            {
+                yield return ed;
+            }
+            else if (stmt is DeclareModuleDecl dmd)
+            {
+                foreach (var member in dmd.Members.OfType<ExtendDecl>())
+                {
+                    yield return member;
+                }
+            }
+        }
+    }
+
     private void ResolveExtendDecl(PassContext pc, ExtendDecl ed)
     {
         if (!_resolvedExtendDecls.Add(ed.ID)) return;
@@ -1558,6 +1585,8 @@ public sealed class InferTypesPass() : Pass(PassName, PassScope.PerBuild)
             }
             var retType = method.ReturnType != null && method.ReturnType.ResolvedType != TypID.Invalid
                 ? GetType(pc, method.ReturnType.ResolvedType) : pc.Types.PrimNil;
+
+            if (ed.IsDeclare) continue;
 
             if (method.IsAsync) _asyncDepth++;
             ResolveFunctionBody(pc, method.Body, method.ReturnStmt);

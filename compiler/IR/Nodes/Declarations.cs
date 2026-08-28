@@ -144,11 +144,13 @@ public sealed class ClassDecl(
 /// </summary>
 public sealed class ExtendDecl(
     NodeID id, TextSpan span,
-    TypeRef targetType, List<ExtensionMethodNode> methods
+    TypeRef targetType, List<ExtensionMethodNode> methods,
+    bool isDeclare = false
 ) : Decl(id, span)
 {
     public TypeRef TargetType { get; } = targetType;
     public List<ExtensionMethodNode> Methods { get; } = methods;
+    public bool IsDeclare { get; } = isDeclare;
     public List<Annotation> Annotations { get; set; } = [];
 }
 

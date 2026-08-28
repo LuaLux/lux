@@ -267,7 +267,8 @@ public sealed partial class CodegenPass() : Pass(PassName, PassScope.PerBuild, t
             case InterfaceDecl:
                 break;
             case ExtendDecl ed:
-                EmitExtendDecl(ctx, pkg, gen, ed);
+                if (!ed.IsDeclare)
+                    EmitExtendDecl(ctx, pkg, gen, ed);
                 break;
             case MatchStmt ms:
                 EmitMatchStmt(ctx, pkg, gen, ms);

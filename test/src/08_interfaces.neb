@@ -126,12 +126,22 @@ declare module "generated-shape"
     end
 
     function genDescribe(s: GenShape, prefix: string = ...): string
+
+    extend string
+        function declaredExtension(): string
+    end
 end
 
 declare function sizedDefault(a: number, b: string = ...): string
 
 local function usesDeclaredDefault(): string
     return sizedDefault(1)
+end
+
+--- Resolves against an extension that a declaration file carries as a signature only. It is never
+--- called, because a declared extension has no runtime binding of its own.
+local function usesDeclaredExtension(): string
+    return ("x"):declaredExtension()
 end
 
 local function inspectExternal(c: Character): number
@@ -154,6 +164,7 @@ export function run(): nil
 
     expectEq("declared class inherits interface signatures", type(inspectExternal), "function")
     expectEq("declared parameter default makes the argument optional", type(usesDeclaredDefault), "function")
+    expectEq("extension declared in a declaration file resolves", type(usesDeclaredExtension), "function")
 
     local w = new Widget()
     expectEq("interface default param omitted", w:label(), "cfg:widget")
