@@ -326,6 +326,45 @@ public sealed partial class CodegenPass() : Pass(PassName, PassScope.PerBuild, t
     /// constructor of its own is constructed through the one it inherits, so its generated
     /// <c>new</c> takes a variadic parameter list and forwards it to the base unchanged.
     /// </summary>
+    /// <summary>
+    /// Records the interfaces <paramref name="cd"/> implements on the class table, so an `is` test
+    /// against an interface has something to look up at runtime.
+    /// </summary>
+    private void EmitImplementedInterfaces(PassContext ctx, PackageContext pkg, LuaGenerator gen, ClassDecl cd, string className)
+    {
+        if (cd.Name.Sym == SymID.Invalid
+            || !pkg.Syms.GetByID(cd.Name.Sym, out var sym)
+            || !pkg.Types.GetByID(sym.Type, out var declared)
+            || declared is not ClassType classType)
+        {
+            return;
+        }
+
+        var names = Nebra.IR.Type.ImplementedInterfaces(classType)
+            .Select(iface => iface.Name)
+            .Distinct()
+            .OrderBy(name => name, StringComparer.Ordinal)
+            .ToList();
+
+        if (names.Count == 0)
+        {
+            return;
+        }
+
+        gen.Write(className);
+        gen.Write(".__interfaces = { ");
+        for (var i = 0; i < names.Count; i++)
+        {
+            if (i > 0) gen.Write(", ");
+            gen.Write("[\"");
+            gen.Write(names[i]);
+            gen.Write("\"] = true");
+        }
+        gen.Write(" }");
+        gen.NewLine();
+        gen.WriteSemicolon();
+    }
+
     private void EmitClassDecl(PassContext ctx, PackageContext pkg, LuaGenerator gen, ClassDecl cd)
     {
         var className = ResolveName(ctx, pkg, cd.Name);
@@ -377,6 +416,8 @@ public sealed partial class CodegenPass() : Pass(PassName, PassScope.PerBuild, t
         gen.Write("\"");
         gen.NewLine();
         gen.WriteSemicolon();
+
+        EmitImplementedInterfaces(ctx, pkg, gen, cd, className);
 
         foreach (var accessor in cd.Accessors)
         {
@@ -1691,9 +1732,29 @@ public sealed partial class CodegenPass() : Pass(PassName, PassScope.PerBuild, t
             case FunctionType:
                 EmitTypeOfCheck(ctx, pkg, gen, tchk.Inner, "function");
                 break;
-            case EnumType:
+            case ClassType ct:
             {
-                var enumName = tchk.TargetType is NamedTypeRef nrt ? nrt.Name.Name : ((EnumType)targetType).Name;
+                gen.Write(gen.GetInstanceOfHelper());
+                gen.Write("(");
+                EmitExpr(ctx, pkg, gen, tchk.Inner);
+                gen.Write(", ");
+                gen.Write(PatternTypeName(ctx, pkg, tchk.TargetType, ct.Name));
+                gen.Write(")");
+                break;
+            }
+            case InterfaceType it:
+            {
+                gen.Write(gen.GetImplementsHelper());
+                gen.Write("(");
+                EmitExpr(ctx, pkg, gen, tchk.Inner);
+                gen.Write(", \"");
+                gen.Write(it.Name);
+                gen.Write("\")");
+                break;
+            }
+            case EnumType et:
+            {
+                var enumName = PatternTypeName(ctx, pkg, tchk.TargetType, et.Name);
                 gen.Write("(function() local __v = (");
                 EmitExpr(ctx, pkg, gen, tchk.Inner);
                 gen.Write("); for _, __m in pairs(");

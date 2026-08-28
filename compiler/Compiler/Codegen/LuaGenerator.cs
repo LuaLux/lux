@@ -430,6 +430,29 @@ public sealed class LuaGenerator(Config config)
             $"end");
     }
 
+    /// <summary>
+    /// Emits the helper backing an `is` test against an interface. Interfaces have no runtime
+    /// value, so the check looks up the name in the `__interfaces` set the class carries.
+    /// </summary>
+    public string GetImplementsHelper()
+    {
+        return RequireHelper("implements", name =>
+            $"local function {name}(v, iface) " +
+            $"if type(v) ~= \"table\" then return false end " +
+            $"local mt = getmetatable(v) " +
+            $"while type(mt) == \"table\" do " +
+            $"if type(mt.__interfaces) == \"table\" and mt.__interfaces[iface] then return true end " +
+            $"if type(mt.__index) == \"table\" then " +
+            $"if type(mt.__index.__interfaces) == \"table\" and mt.__index.__interfaces[iface] then return true end " +
+            $"mt = getmetatable(mt.__index) " +
+            $"else " +
+            $"mt = getmetatable(mt) " +
+            $"end " +
+            $"end " +
+            $"return false " +
+            $"end");
+    }
+
     public string GetInstanceOfHelper()
     {
         return RequireHelper("instanceof", name =>

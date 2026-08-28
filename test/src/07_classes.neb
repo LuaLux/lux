@@ -212,4 +212,15 @@ export function run(): nil
     expectEq("operator + x", sum.x, 4)
     expectEq("operator + y", sum.y, 6)
     expect("operator ==", v1 == new Vec(1, 2))
+    -- The `is` operator against class types
+    local asBase: Animal = new Cat("mittens")
+    expect("is against the runtime class", asBase is Cat)
+    expect("is against a base class", asBase is Animal)
+    local plain: any = new Animal("generic")
+    expect("is against a class through any", plain is Animal)
+    expect("is rejects an unrelated subclass", not (plain is Cat))
+    local num: any = 5
+    expect("is still narrows a primitive", num is number)
+    expect("is rejects a mismatched primitive", not (num is string))
+
 end

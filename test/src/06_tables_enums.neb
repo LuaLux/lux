@@ -99,4 +99,9 @@ export function run(): nil
     else
         expect("enum equality narrowing", false)
     end
+    -- The `is` operator against enum types
+    local shade: any = Color.Green
+    expect("is against an enum member", shade is Color)
+    expect("is rejects a non-member", not (99 is Color))
+
 end
