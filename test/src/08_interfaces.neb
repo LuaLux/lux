@@ -74,6 +74,23 @@ extend number
     end
 end
 
+interface DeepBase
+    function deepA(): string
+end
+
+interface DeepMid extends DeepBase
+    function deepB(): string
+end
+
+class DeepImpl implements DeepMid
+    function deepA(): string
+        return "a"
+    end
+    function deepB(): string
+        return "b"
+    end
+end
+
 class Terse implements Configurable
     function label(prefix: string): string
         return prefix .. ":terse"
@@ -152,6 +169,9 @@ export function run(): nil
     expect("reflection registry reachable", reflectedClassCount() >= 0)
     expectEq("type-only module stays requireable", (new Marked()):mark(), "marked")
     expectEq("extension declared in another file", ("hi"):exclaim(), "hi!")
+
+    local deep: DeepBase = new DeepImpl()
+    expectEq("interface reached through two extends levels", deep:deepA(), "a")
 
     local t = new Terse()
     expectEq("implementation adopts the interface default", t:label(), "cfg:terse")

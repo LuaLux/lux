@@ -360,6 +360,12 @@ public enum DiagnosticCode
     ErrInterfaceDefaultNotInheritable = 0x4018,
 
     [Level(DiagnosticLevel.Error)]
+    [Category(DiagnosticCategory.Semantic)]
+    [Format("'{0}' cannot extend '{1}': that would make it its own ancestor")]
+    [Help("break the cycle so the chain of base types ends")]
+    ErrCyclicInheritance = 0x4019,
+
+    [Level(DiagnosticLevel.Error)]
     [Category(DiagnosticCategory.Type)]
     [Format("Primitive type '{0}' cannot take generic type arguments")]
     ErrGenericOnPrimitive = 0x4020,

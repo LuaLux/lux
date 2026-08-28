@@ -750,7 +750,16 @@ public sealed class InferTypesPass() : Pass(PassName, PassScope.PerBuild)
         {
             var baseTyp = LookupSymbolType(pc, cd.BaseClass.Sym);
             if (baseTyp != TypID.Invalid && pc.Types.GetByID(baseTyp, out var bt) && bt is ClassType baseCls)
-                classType.BaseClass = baseCls;
+            {
+                // The cycle is rejected before it reaches the type graph. Every walk over the base
+                // chain assumes it ends, so letting one in makes the compiler spin instead of
+                // reporting anything.
+                if (ReachesThroughBaseClasses(baseCls, classType))
+                    pc.Diag.Report(cd.BaseClass.Span, Diagnostics.DiagnosticCode.ErrCyclicInheritance,
+                        cd.Name.Name, cd.BaseClass.Name);
+                else
+                    classType.BaseClass = baseCls;
+            }
             else if (baseTyp != TypID.Invalid)
                 pc.Diag.Report(cd.BaseClass.Span, Diagnostics.DiagnosticCode.ErrExtendsNonClass, cd.BaseClass.Name);
         }
@@ -1021,6 +1030,45 @@ public sealed class InferTypesPass() : Pass(PassName, PassScope.PerBuild)
         if (inherited == null || inherited.MinParamCount == 0) return;
 
         pc.Diag.Report(ctor.Span, Diagnostics.DiagnosticCode.ErrMissingSuperCall, cd.Name.Name);
+    }
+
+    /// <summary>
+    /// Reports whether <paramref name="target"/> sits on <paramref name="start"/>'s chain of base
+    /// classes, <paramref name="start"/> itself included. Carries its own visited set so it stays
+    /// terminating even if a cycle has already been recorded elsewhere.
+    /// </summary>
+    private static bool ReachesThroughBaseClasses(ClassType start, ClassType target)
+    {
+        var seen = new HashSet<TypID>();
+        for (var cur = start; cur != null; cur = cur.BaseClass)
+        {
+            if (cur.ID == target.ID) return true;
+            if (!seen.Add(cur.ID)) return true;
+        }
+
+        return false;
+    }
+
+    /// <summary>
+    /// The interface counterpart of <see cref="ReachesThroughBaseClasses"/>: whether
+    /// <paramref name="target"/> is reachable from <paramref name="start"/> through extends edges,
+    /// <paramref name="start"/> included.
+    /// </summary>
+    private static bool ReachesThroughBaseInterfaces(InterfaceType start, InterfaceType target)
+    {
+        var seen = new HashSet<TypID>();
+        var stack = new Stack<InterfaceType>();
+        stack.Push(start);
+
+        while (stack.Count > 0)
+        {
+            var cur = stack.Pop();
+            if (cur.ID == target.ID) return true;
+            if (!seen.Add(cur.ID)) continue;
+            foreach (var b in cur.BaseInterfaces) stack.Push(b);
+        }
+
+        return false;
     }
 
     private static bool ParentHasMethod(ClassType cls, string name)
@@ -1356,7 +1404,15 @@ public sealed class InferTypesPass() : Pass(PassName, PassScope.PerBuild)
             if (baseIface.Sym == SymID.Invalid) continue;
             var bt = LookupSymbolType(pc, baseIface.Sym);
             if (bt != TypID.Invalid && pc.Types.GetByID(bt, out var bit) && bit is InterfaceType baseIfaceType)
-                ifaceType.BaseInterfaces.Add(baseIfaceType);
+            {
+                // Same reasoning as for base classes: a cycle here makes the walks over the
+                // extends graph non-terminating, so it is rejected rather than recorded.
+                if (ReachesThroughBaseInterfaces(baseIfaceType, ifaceType))
+                    pc.Diag.Report(baseIface.Span, Diagnostics.DiagnosticCode.ErrCyclicInheritance,
+                        id.Name.Name, baseIface.Name);
+                else
+                    ifaceType.BaseInterfaces.Add(baseIfaceType);
+            }
         }
 
         // Type `self` inside default-method bodies as the interface itself.
@@ -3772,10 +3828,7 @@ public sealed class InferTypesPass() : Pass(PassName, PassScope.PerBuild)
 
     private static bool InterfaceExtendsInterface(InterfaceType iface, InterfaceType target)
     {
-        if (iface.ID == target.ID) return true;
-        foreach (var b in iface.BaseInterfaces)
-            if (InterfaceExtendsInterface(b, target)) return true;
-        return false;
+        return ReachesThroughBaseInterfaces(iface, target);
     }
 
     private bool StructEqual(PassContext pc, TypID a, TypID b)
